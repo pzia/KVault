@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kobo-vault.local/schemas/acquisition-v2.2.json",
+  "title": "Kobo Vault Acquisition Information",
+  "type": "object",
+  "required": ["provider", "schema_version", "item", "acquisition"],
+  "properties": {
+    "provider": { "const": "kobo" },
+    "schema_version": { "const": "1.2" },
+    "item": { "$ref": "kobo-vault-library-item.schema.json" },
+    "acquisition": {
+      "type": "object",
+      "required": [
+        "product_id", "mode", "display_profile", "mechanisms", "content_keys",
+        "candidates", "validity", "content_keys_exposed", "credentials_exposed"
+      ],
+      "properties": {
+        "product_id": { "type": "string" },
+        "revision_id": { "type": ["string", "null"] },
+        "resolved_identifier": { "type": ["string", "null"] },
+        "mode": { "enum": ["descriptor", "delegated"] },
+        "display_profile": { "enum": ["Android", "Desktop"] },
+        "mechanisms": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["http_plain", "adobe_adept", "kobo_kdrm", "unknown"] }
+        },
+        "content_keys": {
+          "type": "object",
+          "required": ["present", "count", "values_exposed", "retrieval"],
+          "properties": {
+            "present": { "type": "boolean" },
+            "count": { "type": "integer", "minimum": 0 },
+            "values_exposed": { "const": false },
+            "retrieval": { "enum": ["not_exposed", "consumer_replays_content_access"] }
+          },
+          "additionalProperties": false
+        },
+        "content_keys_exposed": { "const": false },
+        "credentials_exposed": { "type": "boolean" },
+        "validity": {
+          "type": "object",
+          "required": ["generated_at", "expires_at", "renewable", "refresh_strategy"],
+          "properties": {
+            "generated_at": { "type": "string", "format": "date-time" },
+            "expires_at": { "type": ["string", "null"], "format": "date-time" },
+            "renewable": { "type": "boolean" },
+            "refresh_strategy": { "const": "resolve_again" }
+          },
+          "additionalProperties": false
+        },
+        "candidates": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "kind", "transport", "method", "url", "headers", "media_format",
+              "source_format", "handling", "drm", "kobo",
+              "drm_type", "format", "protected"
+            ],
+            "properties": {
+              "kind": { "enum": ["http", "acsm"] },
+              "transport": { "const": "https" },
+              "method": { "const": "GET" },
+              "url": { "type": "string", "format": "uri", "pattern": "^https://" },
+              "headers": { "type": "object", "additionalProperties": { "type": "string" } },
+              "media_format": { "enum": ["epub", "kepub", "pdf", "acsm", "unknown"] },
+              "source_format": { "type": "string" },
+              "handling": { "enum": ["http_plain", "adobe_adept", "kobo_kdrm", "unknown"] },
+              "drm": {
+                "type": "object",
+                "required": ["family", "raw_type", "protected"],
+                "properties": {
+                  "family": { "enum": ["none", "adobe_adept", "kobo_kdrm", "unknown"] },
+                  "raw_type": { "type": "string" },
+                  "protected": { "type": "boolean" }
+                },
+                "additionalProperties": false
+              },
+              "kobo": {
+                "type": "object",
+                "required": ["display_profile", "content_keys_present", "content_key_count"],
+                "properties": {
+                  "display_profile": { "enum": ["Android", "Desktop"] },
+                  "content_keys_present": { "type": "boolean" },
+                  "content_key_count": { "type": "integer", "minimum": 0 }
+                },
+                "additionalProperties": false
+              },
+              "drm_type": { "type": "string", "deprecated": true },
+              "format": { "type": "string", "deprecated": true },
+              "protected": { "type": "boolean", "deprecated": true }
+            },
+            "additionalProperties": false
+          }
+        },
+        "delegation": {
+          "type": "object",
+          "required": [
+            "provider", "sensitive", "content_access_request", "session_context",
+            "refresh_token_exposed", "content_access_response", "renewal"
+          ],
+          "properties": {
+            "provider": { "const": "kobo" },
+            "sensitive": { "const": true },
+            "content_access_request": {
+              "type": "object",
+              "required": ["method", "url", "headers", "query"],
+              "properties": {
+                "method": { "const": "GET" },
+                "url": { "type": ["string", "null"] },
+                "headers": { "type": "object", "additionalProperties": { "type": "string" } },
+                "query": { "type": "object", "additionalProperties": { "type": "string" } }
+              },
+              "additionalProperties": false
+            },
+            "session_context": {
+              "type": "object",
+              "required": ["app_version", "user_id", "device_id", "serial_number"],
+              "properties": {
+                "app_version": { "type": "string" },
+                "user_id": { "type": ["string", "null"] },
+                "device_id": { "type": ["string", "null"] },
+                "serial_number": { "type": ["string", "null"] }
+              },
+              "additionalProperties": false
+            },
+            "refresh_token_exposed": { "const": false },
+            "content_access_response": {
+              "type": "object",
+              "required": ["may_include_content_keys", "content_keys_values_returned_by_vault", "consumer_must_classify_drm"],
+              "properties": {
+                "may_include_content_keys": { "const": true },
+                "content_keys_values_returned_by_vault": { "const": false },
+                "consumer_must_classify_drm": { "const": true }
+              },
+              "additionalProperties": false
+            },
+            "renewal": {
+              "type": "object",
+              "required": ["strategy", "endpoint"],
+              "properties": {
+                "strategy": { "const": "resolve_again" },
+                "endpoint": { "type": "string" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "mode": { "const": "delegated" } } },
+          "then": {
+            "required": ["delegation"],
+            "properties": { "credentials_exposed": { "const": true } }
+          }
+        },
+        {
+          "if": { "properties": { "mode": { "const": "descriptor" } } },
+          "then": {
+            "properties": {
+              "credentials_exposed": { "const": false },
+              "content_keys": {
+                "properties": { "retrieval": { "const": "not_exposed" } }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

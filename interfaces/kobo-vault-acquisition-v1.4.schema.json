@@ -1,0 +1,593 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kobo-vault.local/schemas/acquisition-v2.3.3.json",
+  "title": "Kobo Vault Acquisition Information",
+  "type": "object",
+  "required": [
+    "provider",
+    "schema_version",
+    "item",
+    "acquisition"
+  ],
+  "properties": {
+    "provider": {
+      "const": "kobo"
+    },
+    "schema_version": {
+      "const": "1.4"
+    },
+    "item": {
+      "$ref": "kobo-vault-library-item.schema.json"
+    },
+    "acquisition": {
+      "type": "object",
+      "required": [
+        "product_id",
+        "mode",
+        "display_profile",
+        "mechanisms",
+        "sources",
+        "content_keys",
+        "candidates",
+        "validity",
+        "content_keys_exposed",
+        "credentials_exposed"
+      ],
+      "properties": {
+        "product_id": {
+          "type": "string"
+        },
+        "revision_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resolved_identifier": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mode": {
+          "enum": [
+            "descriptor",
+            "delegated"
+          ]
+        },
+        "display_profile": {
+          "enum": [
+            "Android",
+            "Desktop"
+          ]
+        },
+        "mechanisms": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "http_plain",
+              "adobe_adept",
+              "kobo_kdrm",
+              "unknown"
+            ]
+          }
+        },
+        "content_keys": {
+          "type": "object",
+          "required": [
+            "present",
+            "count",
+            "values_exposed",
+            "retrieval"
+          ],
+          "properties": {
+            "present": {
+              "type": "boolean"
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "values_exposed": {
+              "const": false
+            },
+            "retrieval": {
+              "enum": [
+                "not_exposed",
+                "consumer_replays_content_access"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "content_keys_exposed": {
+          "const": false
+        },
+        "credentials_exposed": {
+          "type": "boolean"
+        },
+        "validity": {
+          "type": "object",
+          "required": [
+            "generated_at",
+            "expires_at",
+            "renewable",
+            "refresh_strategy"
+          ],
+          "properties": {
+            "generated_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "expires_at": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time"
+            },
+            "renewable": {
+              "type": "boolean"
+            },
+            "refresh_strategy": {
+              "const": "resolve_again"
+            }
+          },
+          "additionalProperties": false
+        },
+        "candidates": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "kind",
+              "transport",
+              "method",
+              "url",
+              "headers",
+              "media_format",
+              "source_format",
+              "handling",
+              "drm",
+              "kobo",
+              "drm_type",
+              "format",
+              "protected"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "http",
+                  "acsm"
+                ]
+              },
+              "transport": {
+                "const": "https"
+              },
+              "method": {
+                "const": "GET"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^https://"
+              },
+              "headers": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Headers à appliquer au téléchargement du candidat. x-amz-request-payer peut être requis sur les redirections S3. Authorization, lorsqu’il est présent en mode delegated, est limité au premier hop Kobo et ne doit pas être propagé vers un origin tiers."
+              },
+              "media_format": {
+                "enum": [
+                  "epub",
+                  "kepub",
+                  "pdf",
+                  "acsm",
+                  "unknown"
+                ]
+              },
+              "source_format": {
+                "type": "string"
+              },
+              "handling": {
+                "enum": [
+                  "http_plain",
+                  "adobe_adept",
+                  "kobo_kdrm",
+                  "unknown"
+                ]
+              },
+              "drm": {
+                "type": "object",
+                "required": [
+                  "family",
+                  "raw_type",
+                  "protected"
+                ],
+                "properties": {
+                  "family": {
+                    "enum": [
+                      "none",
+                      "adobe_adept",
+                      "kobo_kdrm",
+                      "unknown"
+                    ]
+                  },
+                  "raw_type": {
+                    "type": "string"
+                  },
+                  "protected": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "kobo": {
+                "type": "object",
+                "required": [
+                  "source",
+                  "display_profile",
+                  "content_keys_present",
+                  "content_key_count",
+                  "requires_kobo_authorization"
+                ],
+                "properties": {
+                  "source": {
+                    "enum": [
+                      "content_access_book",
+                      "library_download_link",
+                      "library_sync"
+                    ]
+                  },
+                  "display_profile": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "Android",
+                      "Desktop",
+                      null
+                    ]
+                  },
+                  "content_keys_present": {
+                    "type": "boolean"
+                  },
+                  "content_key_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "requires_kobo_authorization": {
+                    "type": "boolean",
+                    "description": "Indique que le premier hop Kobo peut nécessiter le Bearer Kobo. Le Bearer n’est exposé dans candidate.headers qu’en mode delegated."
+                  },
+                  "lookup_shape": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "get_revision_id",
+                      "get_product_id",
+                      "post_identifiers",
+                      null
+                    ]
+                  },
+                  "platform": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Plateforme Kobo annoncée par la source de livraison, par exemple Android ou Generic."
+                  }
+                },
+                "additionalProperties": false
+              },
+              "drm_type": {
+                "type": "string",
+                "deprecated": true
+              },
+              "format": {
+                "type": "string",
+                "deprecated": true
+              },
+              "protected": {
+                "type": "boolean",
+                "deprecated": true
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "delegation": {
+          "type": "object",
+          "required": [
+            "provider",
+            "sensitive",
+            "content_access_request",
+            "session_context",
+            "refresh_token_exposed",
+            "content_access_response",
+            "renewal"
+          ],
+          "properties": {
+            "provider": {
+              "const": "kobo"
+            },
+            "sensitive": {
+              "const": true
+            },
+            "content_access_request": {
+              "type": "object",
+              "required": [
+                "method",
+                "url",
+                "headers",
+                "query"
+              ],
+              "properties": {
+                "method": {
+                  "const": "GET"
+                },
+                "url": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "headers": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                },
+                "query": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
+            "session_context": {
+              "type": "object",
+              "required": [
+                "app_version",
+                "user_id",
+                "device_id",
+                "serial_number"
+              ],
+              "properties": {
+                "app_version": {
+                  "type": "string"
+                },
+                "user_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "device_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "serial_number": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "refresh_token_exposed": {
+              "const": false
+            },
+            "content_access_response": {
+              "type": "object",
+              "required": [
+                "may_include_content_keys",
+                "content_keys_values_returned_by_vault",
+                "consumer_must_classify_drm"
+              ],
+              "properties": {
+                "may_include_content_keys": {
+                  "const": true
+                },
+                "content_keys_values_returned_by_vault": {
+                  "const": false
+                },
+                "consumer_must_classify_drm": {
+                  "const": true
+                }
+              },
+              "additionalProperties": false
+            },
+            "renewal": {
+              "type": "object",
+              "required": [
+                "strategy",
+                "endpoint"
+              ],
+              "properties": {
+                "strategy": {
+                  "const": "resolve_again"
+                },
+                "endpoint": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "sources": {
+          "type": "object",
+          "required": [
+            "content_access_book",
+            "library_sync",
+            "acsm_export"
+          ],
+          "properties": {
+            "content_access_book": {
+              "type": "object",
+              "required": [
+                "status",
+                "candidate_count"
+              ],
+              "properties": {
+                "status": {
+                  "enum": [
+                    "available",
+                    "not_available"
+                  ]
+                },
+                "candidate_count": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "additionalProperties": false
+            },
+            "acsm_export": {
+              "type": "object",
+              "required": [
+                "requested",
+                "status",
+                "source",
+                "candidate_count",
+                "request_shape"
+              ],
+              "properties": {
+                "requested": {
+                  "type": "boolean"
+                },
+                "status": {
+                  "enum": [
+                    "available",
+                    "not_available",
+                    "resource_unavailable",
+                    "upstream_error",
+                    "skipped"
+                  ]
+                },
+                "source": {
+                  "const": "get_download_link"
+                },
+                "candidate_count": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "request_shape": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "get_revision_id",
+                    "get_product_id",
+                    "post_identifiers",
+                    null
+                  ]
+                },
+                "upstream_status": {
+                  "type": "integer",
+                  "minimum": 100,
+                  "maximum": 599
+                }
+              },
+              "additionalProperties": false
+            },
+            "library_sync": {
+              "type": "object",
+              "required": [
+                "status",
+                "candidate_count",
+                "pages",
+                "event_count"
+              ],
+              "properties": {
+                "status": {
+                  "enum": [
+                    "available",
+                    "not_available",
+                    "upstream_error",
+                    "skipped"
+                  ]
+                },
+                "candidate_count": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "pages": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "event_count": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "delegated"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "delegation"
+            ],
+            "properties": {
+              "credentials_exposed": {
+                "const": true
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "descriptor"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "credentials_exposed": {
+                "const": false
+              },
+              "content_keys": {
+                "properties": {
+                  "retrieval": {
+                    "const": "not_exposed"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

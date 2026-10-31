@@ -1,0 +1,29 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "kobo-library-vault",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-08-18",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "KOBO_VAULT",
+      "database_name": "kobo-library-vault",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+    }
+  ],
+  "vars": {
+    "APP_VERSION": "0.9.7",
+    "KOBO_APP_VERSION": "4.44.23552",
+    "CATALOG_CACHE_TTL_SECONDS": "86400",
+    "RATING_CACHE_TTL_SECONDS": "604800",
+    "LEGACY_API_V1_ENABLED": "false"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

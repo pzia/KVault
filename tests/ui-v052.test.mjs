@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const app=fs.readFileSync('public/app.js','utf8');
+const storage=fs.readFileSync('public/storage.js','utf8');
+const model=fs.readFileSync('public/model.js','utf8');
+const worker=fs.readFileSync('src/worker.js','utf8');
+const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
+
+assert.equal(pkg.version,'0.9.7');
+assert.match(worker,/APP_RELEASE = "0\.9\.7"/);
+assert.match(app,/APP_VERSION = '0\.9\.7'/);
+assert.match(app,/schema: 4/);
+assert.match(model,/schema:4/);
+assert.doesNotMatch(model,/catalogCache:\{\.\.\./);
+assert.doesNotMatch(app,/vault\.catalogCache/);
+assert.match(app,/getCatalogCache\(session\.uidHash, key\)/);
+assert.match(app,/putCatalogCache\(session\.uidHash, key/);
+assert.match(app,/Une recherche catalogue ne modifie plus le coffre/);
+assert.match(app,/vaultNeedsCompaction/);
+assert.match(app,/deleteCatalogCaches\(session\.uidHash\)/);
+assert.match(storage,/DB_VERSION = 3/);
+assert.match(storage,/CATALOG_STORE = "catalog-cache"/);
+assert.match(storage,/CATALOG_MAX_ENTRY_BYTES = 6 \* 1024 \* 1024/);
+assert.match(storage,/CATALOG_MAX_TOTAL_BYTES = 24 \* 1024 \* 1024/);
+assert.match(storage,/entry_too_large/);
+console.log('ui-v052.test.mjs: OK');

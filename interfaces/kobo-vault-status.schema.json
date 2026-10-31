@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kobo-vault.local/schemas/status-v2.3.2.json",
+  "title": "Kobo Vault API Status",
+  "type": "object",
+  "required": [
+    "ok",
+    "api_version",
+    "contract_revision",
+    "acquisition_schema_version",
+    "service",
+    "role",
+    "authentication",
+    "capabilities",
+    "capability_details",
+    "acquisition_access"
+  ],
+  "properties": {
+    "ok": {
+      "const": true
+    },
+    "api_version": {
+      "const": "2.3"
+    },
+    "service": {
+      "const": "kobo-vault"
+    },
+    "release": {
+      "type": "string"
+    },
+    "role": {
+      "const": "kobo-library-provider"
+    },
+    "authentication": {
+      "type": "object",
+      "required": [
+        "type",
+        "token_prefix",
+        "required_for_private_capabilities"
+      ],
+      "properties": {
+        "type": {
+          "const": "bearer"
+        },
+        "token_prefix": {
+          "const": "kvt_"
+        },
+        "required_for_private_capabilities": {
+          "const": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "capability_details": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "access",
+          "scope",
+          "available"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "access": {
+            "enum": [
+              "public",
+              "authenticated"
+            ]
+          },
+          "scope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "available": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "acquisition_access": {
+      "enum": [
+        "unknown",
+        "configured",
+        "not_configured"
+      ]
+    },
+    "contract_revision": {
+      "const": "2.3.3"
+    },
+    "acquisition_schema_version": {
+      "const": "1.4"
+    }
+  },
+  "additionalProperties": true
+}

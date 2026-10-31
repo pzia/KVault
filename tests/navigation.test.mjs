@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const html = fs.readFileSync('public/index.html','utf8');
+const app = fs.readFileSync('public/app.js','utf8');
+assert.match(html, /data-tab="catalog"[^>]*>Rapprochement</);
+assert.match(html, /id="catalogMode"/);
+assert.match(html, /value="free">Recherche libre</);
+assert.match(app, /addEventListener\('popstate'/);
+assert.match(app, /history\.pushState/);
+assert.match(app, /history\.replaceState/);
+assert.match(app, /openReconciliation\('author'/);
+console.log('navigation.test.mjs: OK');

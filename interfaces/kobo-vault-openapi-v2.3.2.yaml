@@ -1,0 +1,401 @@
+openapi: 3.1.0
+info:
+  title: Kobo Vault Provider API
+  version: 2.3.2
+  description: >-
+    Interface publique de Kobo Vault en tant que fournisseur spécialisé Kobo.
+    Paris Library ou tout autre consommateur orchestre les actions locales.
+servers:
+  - url: https://{host}/api/v2
+    variables:
+      host:
+        default: kobo-vault.example.workers.dev
+paths:
+  /status:
+    get:
+      summary: Découvrir le service, sa version et ses capacités
+      operationId: getStatus
+      security: []
+      responses:
+        '200':
+          description: État et capacités
+          content:
+            application/json:
+              schema:
+                $ref: './kobo-vault-status.schema.json'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /account:
+    get:
+      summary: Identité d'affichage du compte Kobo projeté
+      operationId: getAccount
+      security:
+        - bearerAuth: []
+      x-required-scope: kobo.library.read
+      responses:
+        '200':
+          description: Compte Kobo
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [account]
+                properties:
+                  account:
+                    type: object
+                    required: [id, display_name]
+                    properties:
+                      id:
+                        type: string
+                      display_name:
+                        type: string
+                      email_hint:
+                        type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /catalog/search:
+    get:
+      summary: Rechercher le catalogue Kobo global
+      operationId: searchCatalog
+      security:
+        - bearerAuth: []
+      x-required-scope: kobo.catalog.read
+      parameters:
+        - $ref: '#/components/parameters/QCatalog'
+        - $ref: '#/components/parameters/Field'
+        - name: language
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 20
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Résultats Kobo enrichis avec l'état de possession
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, field, field_mode, page, count]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: './kobo-vault-library-item.schema.json'
+                  field:
+                    type: string
+                  field_mode:
+                    type: string
+                  page:
+                    type: integer
+                  count:
+                    type: integer
+                  page_info:
+                    type: object
+                    additionalProperties: true
+                  next_page:
+                    type: [integer, 'null']
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '502':
+          $ref: '#/components/responses/UpstreamError'
+  /library/search:
+    get:
+      summary: Rechercher dans la bibliothèque Kobo projetée
+      operationId: searchLibrary
+      security:
+        - bearerAuth: []
+      x-required-scope: kobo.library.read
+      parameters:
+        - $ref: '#/components/parameters/QLibrary'
+        - $ref: '#/components/parameters/Field'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Résultats de la bibliothèque
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, field, field_mode, next_cursor]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: './kobo-vault-library-item.schema.json'
+                  field:
+                    type: string
+                  field_mode:
+                    type: string
+                  next_cursor:
+                    type: [string, 'null']
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /library/manifest:
+    get:
+      summary: Manifest léger de la bibliothèque Kobo possédée
+      operationId: getLibraryManifest
+      security:
+        - bearerAuth: []
+      x-required-scope: kobo.library.read
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 200
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Page du manifest
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, next_cursor]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: './kobo-vault-library-item.schema.json'
+                  next_cursor:
+                    type: [string, 'null']
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /library/{product_id}:
+    get:
+      summary: Obtenir le détail d'un livre possédé
+      operationId: getLibraryBook
+      security:
+        - bearerAuth: []
+      x-required-scope: kobo.library.read
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      responses:
+        '200':
+          description: Notice Kobo
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [item]
+                properties:
+                  item:
+                    $ref: './kobo-vault-library-item.schema.json'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /library/{product_id}/acquisition:
+    post:
+      summary: Résoudre les informations d'acquisition Kobo
+      description: >-
+        Retourne les variantes d'acquisition Kobo sans aplatir le mécanisme de livraison.
+        Chaque candidat expose notamment son format normalisé, le DRM brut Kobo, une
+        famille DRM fonctionnelle et sa source Kobo. Les réponses content_access_book
+        sont normalisées depuis ContentUrls ou DownloadUrls et depuis DownloadUrl ou Url.
+        Les headers d'un candidat font partie de la recette de transport et doivent être
+        respectés par le consommateur. En plus des candidats de content_access_book,
+        Vault tente par défaut de résoudre l'export ACSM annoncé
+        par la ressource Kobo get_download_link et ajoute ce candidat à la même liste.
+        Le mode delegated ajoute une requête content_access_book reproductible par un
+        outil local générique. Les valeurs ContentKeys ne sont jamais transportées par Vault.
+      operationId: resolveAcquisition
+      security:
+        - bearerAuth: []
+      x-required-scope: kobo.acquisition.read
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revision_id:
+                  type: string
+                mode:
+                  type: string
+                  enum: [descriptor, delegated]
+                  default: descriptor
+                  description: >-
+                    delegated exige en plus le scope kobo.acquisition.delegate.
+                display_profile:
+                  type: string
+                  enum: [Android, Desktop]
+                  default: Android
+                  description: >-
+                    Profil client demandé à Kobo pour content_access_book. Le profil peut
+                    modifier le format et/ou la famille DRM exposés par Kobo.
+                include_acsm:
+                  type: boolean
+                  default: true
+                  description: >-
+                    Lorsque true, Vault tente aussi de résoudre le lien d'export ACSM via
+                    la ressource Kobo get_download_link. Un échec de cette source
+                    alternative n'empêche pas le retour des candidats content_access_book.
+              additionalProperties: false
+      responses:
+        '200':
+          description: Informations d'acquisition
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: 'private, no-store'
+          content:
+            application/json:
+              schema:
+                $ref: './kobo-vault-acquisition.schema.json'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Révision incohérente, livre archivé ou accès d'acquisition non publié
+          content:
+            application/json:
+              schema:
+                $ref: './kobo-vault-error.schema.json'
+        '422':
+          description: Livre non téléchargeable
+          content:
+            application/json:
+              schema:
+                $ref: './kobo-vault-error.schema.json'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '502':
+          $ref: '#/components/responses/UpstreamError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: KoboVaultToken
+  parameters:
+    ProductId:
+      name: product_id
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    QCatalog:
+      name: q
+      in: query
+      required: true
+      schema:
+        type: string
+        minLength: 2
+        maxLength: 200
+    QLibrary:
+      name: q
+      in: query
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 200
+    Field:
+      name: field
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [all, title, author, isbn, subject]
+        default: all
+  responses:
+    Unauthorized:
+      description: Token absent ou invalide
+      content:
+        application/json:
+          schema:
+            $ref: './kobo-vault-error.schema.json'
+    Forbidden:
+      description: Scope insuffisant
+      content:
+        application/json:
+          schema:
+            $ref: './kobo-vault-error.schema.json'
+    NotFound:
+      description: Ressource inconnue
+      content:
+        application/json:
+          schema:
+            $ref: './kobo-vault-error.schema.json'
+    InvalidRequest:
+      description: Requête invalide
+      content:
+        application/json:
+          schema:
+            $ref: './kobo-vault-error.schema.json'
+    RateLimited:
+      description: Limite de débit atteinte
+      content:
+        application/json:
+          schema:
+            $ref: './kobo-vault-error.schema.json'
+    UpstreamError:
+      description: Erreur Kobo amont
+      content:
+        application/json:
+          schema:
+            $ref: './kobo-vault-error.schema.json'

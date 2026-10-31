@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <meta name="description" content="Bibliothèque Kobo chiffrée, recherche, statistiques et rapprochement avec le catalogue.">
+  <meta name="application-name" content="Kobo Library Vault">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/icon-192.png" sizes="192x192" type="image/png">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="stylesheet" href="/app.css">
+  <title>Kobo Library Vault</title>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">K</div>
+      <div><strong>Kobo Library Vault</strong><small>Bibliothèque privée chiffrée</small></div>
+    </div>
+    <div class="top-actions">
+      <span id="headerVersion" class="header-version">v…</span>
+      <span id="syncBadge" class="badge muted">Verrouillé</span>
+      <button id="lockBtn" class="ghost hidden lock-button" type="button" title="Verrouiller" aria-label="Verrouiller"><span class="lock-icon" aria-hidden="true"></span><span class="lock-label">Verrouiller</span></button>
+    </div>
+  </header>
+
+  <main>
+    <section id="unlockView" class="center-panel">
+      <div class="panel hero-panel">
+        <p class="eyebrow">Coffre synchronisé</p>
+        <h1>Votre bibliothèque Kobo, sans exposer vos données à Cloudflare.</h1>
+        <p class="lede">Un UID et un mot de passe suffisent pour retrouver le même coffre sur plusieurs appareils. Le chiffrement est effectué dans le navigateur.</p>
+        <div id="knownProfileChooser" class="profile-chooser hidden">
+          <label>Profil Vault connu sur cet appareil
+            <select id="profileSelect"><option value="">Choisir un profil…</option></select>
+          </label>
+        </div>
+        <form id="unlockForm" class="stack">
+          <label>UID de synchronisation
+            <input id="uidInput" required autocomplete="username" minlength="3" maxlength="120" placeholder="ex. alice-kobo">
+          </label>
+          <label>Mot de passe du coffre
+            <input id="passwordInput" required type="password" autocomplete="current-password" minlength="10" placeholder="10 caractères minimum">
+          </label>
+          <label class="remember-row"><input id="rememberDevice" type="checkbox" checked> <span>Rester connecté sur cet appareil</span></label>
+          <button class="primary" type="submit">Ouvrir le coffre</button>
+        </form>
+        <p class="fineprint">Ce mot de passe n’est pas votre mot de passe Kobo. Il sert à dériver la clé de chiffrement et le secret de synchronisation. Un UID inconnu ne crée plus automatiquement de coffre.</p>
+        <button id="showBootstrapCreateBtn" class="ghost hidden" type="button">Créer explicitement le premier compte Vault</button>
+        <form id="bootstrapCreateForm" class="stack compact-create hidden">
+          <label>Nouvel UID Vault<input id="bootstrapUidInput" minlength="3" maxlength="120" autocomplete="off"></label>
+          <label>Mot de passe du nouveau coffre<input id="bootstrapPasswordInput" type="password" minlength="10" autocomplete="new-password"></label>
+          <label>Confirmer le mot de passe<input id="bootstrapPasswordConfirmInput" type="password" minlength="10" autocomplete="new-password"></label>
+          <button class="primary" type="submit">Créer le premier compte Vault</button>
+        </form>
+        <div id="unlockMessage" class="message hidden" role="status"></div>
+      </div>
+    </section>
+
+    <section id="appView" class="app-shell hidden">
+      <nav class="tabs" aria-label="Sections">
+        <button class="tab active" data-tab="library" type="button">Bibliothèque</button>
+        <button class="tab" data-tab="catalog" type="button">Rapprochement</button>
+        <button class="tab" data-tab="stats" type="button">Stats</button>
+        <button class="tab" data-tab="kobo" type="button">Compte Kobo</button>
+        <button class="tab" data-tab="settings" type="button">Données</button>
+      </nav>
+
+      <section class="tabpage active" data-page="library">
+        <div class="page-head">
+          <div><p class="eyebrow">Acquisitions</p><h2>Bibliothèque Kobo</h2><p id="libraryMeta" class="muted-text">Aucune synchronisation Kobo.</p></div>
+          <div class="actions"><button id="refreshLibraryBtn" class="primary" type="button">Synchroniser Kobo</button></div>
+        </div>
+
+        <div class="filter-shell panel" data-filter-shell="library">
+          <div class="filter-shell-head"><button class="filter-toggle" type="button" data-filter-toggle aria-expanded="true"><span>Filtres</span><span class="filter-summary" data-filter-summary></span><span class="filter-chevron" aria-hidden="true">⌃</span></button><button class="tiny ghost filter-reset" type="button" data-filter-reset>Réinitialiser</button></div>
+          <div class="filters" data-filter-body>
+          <label class="grow">Titre ou auteur
+            <input id="librarySearch" type="search" placeholder="Rechercher…">
+          </label>
+          <label>Langue
+            <select id="languageFilter"><option value="">Toutes</option></select>
+          </label>
+          <label>Type
+            <select id="mediaFilter"><option value="">Tous</option><option value="ebook">eBook</option><option value="audiobook">Audio</option></select>
+          </label>
+          <label>Trier
+            <select id="librarySort">
+              <option value="title-asc">Titre A → Z</option>
+              <option value="publication-desc">Parution récente → ancienne</option>
+              <option value="publication-asc">Parution ancienne → récente</option>
+              <option value="author-asc">Auteur A → Z</option>
+              <option value="acquired-desc">Acquisition récente</option>
+            </select>
+          </label>
+          </div>
+        </div>
+        <div class="result-line"><strong id="libraryCount">0</strong><span>résultat(s)</span></div>
+        <div id="libraryGrid" class="book-grid"></div>
+        <div id="libraryEmpty" class="empty">Connectez d’abord votre compte Kobo puis synchronisez votre bibliothèque.</div>
+      </section>
+
+      <section class="tabpage" data-page="catalog">
+        <div class="page-head"><div><p class="eyebrow">Détection des manques</p><h2>Rapprochement avec le catalogue Kobo</h2><p class="muted-text">Compare une recherche Kobo à vos achats pour distinguer les titres possédés, déjà lus/connus et potentiellement manquants.</p></div></div>
+        <div class="filter-shell panel" data-filter-shell="catalog">
+          <div class="filter-shell-head"><button class="filter-toggle" type="button" data-filter-toggle aria-expanded="true"><span>Critères</span><span class="filter-summary" data-filter-summary></span><span class="filter-chevron" aria-hidden="true">⌃</span></button><button class="tiny ghost filter-reset" type="button" data-filter-reset>Réinitialiser</button></div>
+        <form id="catalogForm" class="filters" data-filter-body>
+          <label>Mode
+            <select id="catalogMode">
+              <option value="author">Auteur</option>
+              <option value="series">Série / collection</option>
+              <option value="free">Recherche libre</option>
+            </select>
+          </label>
+          <label class="grow"><span id="catalogQueryLabel">Auteur</span>
+            <input id="catalogQuery" required placeholder="ex. Ursula K. Le Guin">
+          </label>
+          <label>Langue
+            <select id="catalogLanguage"><option value="">Toutes</option><option value="fr">Français</option><option value="en">Anglais</option><option value="de">Allemand</option><option value="es">Espagnol</option><option value="it">Italien</option><option value="nl">Néerlandais</option></select>
+          </label>
+          <button class="primary align-end" type="submit">Rapprocher</button>
+          <button id="forceCatalogRefreshBtn" class="ghost align-end" type="button" title="Ignorer les caches et interroger Kobo">Actualiser Kobo</button>
+        </form>
+        </div>
+        <p id="catalogModeHelp" class="muted-text rapprochement-help">Le mode Auteur applique un contrôle strict du nom d’auteur après la recherche Kobo. En Recherche libre, placez une expression entre guillemets doubles pour exiger sa présence exacte.</p>
+        <div id="catalogStatus" class="message hidden" role="status"></div>
+        <div class="catalog-toolbar">
+          <div class="compare-stats" id="compareStats" aria-label="Filtres de rapprochement"></div>
+          <label class="compact-control">Trier
+            <select id="catalogSort">
+              <option value="publication-desc">Parution récente → ancienne</option>
+              <option value="publication-asc">Parution ancienne → récente</option>
+              <option value="title-asc">Titre A → Z</option>
+              <option value="author-asc">Auteur A → Z</option>
+            </select>
+          </label>
+        </div>
+        <div id="catalogGrid" class="book-grid"></div>
+        <div id="catalogEmpty" class="empty">Choisissez un mode et saisissez une recherche. Pour un prix littéraire ou un thème non structuré chez Kobo, utilisez « Recherche libre ».</div>
+      </section>
+
+      <section class="tabpage" data-page="stats">
+        <div class="page-head"><div><p class="eyebrow">Vue d’ensemble</p><h2>Auteurs les plus achetés</h2><p class="muted-text">Classement calculé localement à partir de votre bibliothèque. Le mode pondéré additionne note moyenne Kobo ÷ 5 pour chaque livre noté ; un livre sans note reste compté mais ne reçoit pas arbitrairement zéro étoile.</p></div></div>
+        <div class="filter-shell panel" data-filter-shell="stats">
+          <div class="filter-shell-head"><button class="filter-toggle" type="button" data-filter-toggle aria-expanded="true"><span>Filtres</span><span class="filter-summary" data-filter-summary></span><span class="filter-chevron" aria-hidden="true">⌃</span></button><button class="tiny ghost filter-reset" type="button" data-filter-reset>Réinitialiser</button></div>
+        <div class="filters" data-filter-body>
+          <label>Langue
+            <select id="statsLanguage"><option value="">Toutes</option></select>
+          </label>
+          <label>Type
+            <select id="statsMedia"><option value="">Tous</option><option value="ebook">eBook</option><option value="audiobook">Audio</option></select>
+          </label>
+          <label>Classement
+            <select id="statsRanking"><option value="count">Nombre de livres</option><option value="weighted">Score pondéré ★</option></select>
+          </label>
+          <label>Afficher
+            <select id="statsLimit"><option value="10">Top 10</option><option value="20" selected>Top 20</option><option value="0">Tous</option></select>
+          </label>
+        </div>
+        </div>
+        <p id="statsRatingStatus" class="muted-text stats-rating-status"></p>
+        <div class="result-line"><strong id="statsCount">0</strong><span>auteur(s) classé(s)</span></div>
+        <div id="statsGrid" class="stats-grid"></div>
+        <div id="statsEmpty" class="empty">Synchronisez votre bibliothèque pour afficher les statistiques.</div>
+      </section>
+
+      <section class="tabpage" data-page="kobo">
+        <div class="two-col">
+          <div class="panel">
+            <p class="eyebrow">Authentification</p><h2>Compte Kobo</h2>
+            <div id="koboConnected" class="status-card hidden"><span class="status-dot ok"></span><div><strong>Compte connecté</strong><p id="koboConnectedMeta" class="muted-text"></p><div class="actions wrap top-gap"><button id="copyAccessTokenBtn" class="ghost" type="button">Copier l’access token</button><button id="copyRefreshTokenBtn" class="ghost" type="button">Copier le refresh token</button></div></div></div>
+            <div id="koboDisconnected">
+              <p>La connexion utilise le mécanisme d’activation web des liseuses Kobo : cette application ne reçoit jamais votre mot de passe Kobo.</p>
+              <button id="startActivationBtn" class="primary" type="button">Connecter mon compte Kobo</button>
+            </div>
+            <div id="activationBox" class="activation hidden">
+              <p>Ouvrez la page Kobo et saisissez ce code :</p>
+              <div id="activationCode" class="activation-code">—</div>
+              <a id="activationLink" class="button-link" href="https://www.kobo.com/activate" target="_blank" rel="noopener noreferrer">Ouvrir kobo.com/activate</a>
+              <button id="pollActivationBtn" class="ghost" type="button">J’ai terminé l’activation</button>
+              <p id="activationStatus" class="muted-text">En attente…</p>
+            </div>
+            <div class="actions top-gap"><button id="disconnectKoboBtn" class="danger ghost hidden" type="button">Oublier les jetons Kobo</button></div>
+          </div>
+          <div class="panel">
+            <p class="eyebrow">Ce qui est stocké</p><h3>Architecture zéro donnée en clair</h3>
+            <ul class="clean-list">
+              <li><strong>Navigateur :</strong> coffre chiffré dans IndexedDB.</li>
+              <li><strong>Cloudflare D1 :</strong> UID hashé, sel, hash d’authentification et fragments chiffrés.</li>
+              <li><strong>Worker :</strong> voit les jetons et réponses Kobo pendant les requêtes interactives. Si l’accès Provider Kobo est activé, une copie des jetons Kobo est conservée chiffrée côté serveur avec un secret Cloudflare dédié.</li>
+              <li><strong>Mot de passe Kobo :</strong> jamais demandé ni stocké.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="tabpage" data-page="settings">
+        <div class="two-col">
+          <div class="panel">
+            <p class="eyebrow">Synchronisation</p><h2>Coffre</h2>
+            <dl class="kv"><dt>UID</dt><dd id="settingsUid">—</dd><dt>Version distante</dt><dd id="settingsVersion">—</dd><dt>Dernière modification</dt><dd id="settingsUpdated">—</dd></dl>
+            <div class="actions"><button id="syncNowBtn" class="primary" type="button">Synchroniser maintenant</button></div>
+          </div>
+          <div class="panel profile-manager-panel">
+            <p class="eyebrow">Identités</p><h3>Profils Vault</h3>
+            <p class="muted-text">Chaque profil correspond à un coffre indépendant. La connexion n’autorise plus la création implicite d’un UID inconnu.</p>
+            <label>Basculer vers un profil connu
+              <select id="knownProfilesSelect"><option value="">Choisir un profil…</option></select>
+            </label>
+            <div class="actions top-gap"><button id="switchProfileBtn" type="button">Changer de profil</button></div>
+            <hr>
+            <h3>Créer un nouveau compte Vault</h3>
+            <p class="muted-text">La création est explicite et n’est disponible que depuis un compte déjà ouvert.</p>
+            <label>Nouvel UID Vault<input id="newVaultUid" minlength="3" maxlength="120" autocomplete="off" placeholder="ex. example-vault"></label>
+            <label>Mot de passe du nouveau coffre<input id="newVaultPassword" type="password" minlength="10" autocomplete="new-password"></label>
+            <label>Confirmer le mot de passe<input id="newVaultPasswordConfirm" type="password" minlength="10" autocomplete="new-password"></label>
+            <div class="actions top-gap"><button id="createVaultBtn" class="primary" type="button">Créer le compte Vault</button></div>
+            <div id="createVaultMessage" class="message hidden" role="status"></div>
+          </div>
+          <div class="panel">
+            <p class="eyebrow">À propos</p><h3>Version et session</h3>
+            <dl class="kv"><dt>Version Kobo Vault</dt><dd id="appVersion">—</dd><dt>Version Worker</dt><dd id="workerVersion">—</dd><dt>Cache interface</dt><dd id="cacheVersion">—</dd><dt>Session persistante</dt><dd id="sessionPersistence">—</dd><dt>Expiration session</dt><dd id="sessionExpiry">—</dd></dl>
+            <p class="muted-text top-gap">La session persistante V0.9.2 n’enregistre pas votre mot de passe. Elle conserve une enveloppe chiffrée locale et un secret propre à cet appareil.</p>
+          </div>
+          <div class="panel integration-panel">
+            <p class="eyebrow">Interfaces</p><h3>API fournisseur Kobo</h3>
+            <p class="muted-text">Kobo Vault expose Kobo à ses consommateurs. Paris Library peut récupérer les métadonnées, rechercher la bibliothèque et demander un descripteur d’acquisition. Un mode de délégation explicite peut aussi fournir à un outil local les éléments d’autorisation Kobo strictement nécessaires, sans créer de dépendance envers Kobo-Adept.</p>
+            <dl class="kv"><dt>Projection bibliothèque</dt><dd id="projectionStatus">—</dd><dt>Accès Provider Kobo</dt><dd id="acquisitionAccessStatus">—</dd></dl>
+            <div class="actions wrap top-gap"><button id="publishProjectionBtn" class="primary" type="button">Publier le manifest</button><button id="removeProjectionBtn" class="ghost" type="button">Retirer la projection</button><button id="refreshIntegrationsBtn" class="ghost" type="button">Actualiser</button></div>
+            <hr>
+            <h3>Accès Provider Kobo</h3>
+            <p class="muted-text">Publie une copie chiffrée des jetons Kobo pour permettre au Provider de rafraîchir la bibliothèque et de résoudre les acquisitions. Kobo Vault n’envoie pas les EPUB et n’expose pas les clés de contenu Kobo.</p>
+            <div class="actions wrap top-gap"><button id="publishAcquisitionAccessBtn" type="button">Activer l’accès Provider Kobo</button><button id="removeAcquisitionAccessBtn" class="danger ghost" type="button">Désactiver</button></div>
+            <hr>
+            <h3>Token consommateur API v2</h3>
+            <label>Libellé
+              <input id="apiTokenLabel" type="text" maxlength="80" value="Paris Library" autocomplete="off">
+            </label>
+            <p class="muted-text">Preset Paris Library : catalogue Kobo, bibliothèque, acquisition et délégation KDRM.</p>
+            <div class="delegate-scope-callout">
+              <label class="checkbox-line delegate-scope"><input id="apiTokenDelegate" type="checkbox" checked> <span><strong>Autoriser l’acquisition déléguée KDRM</strong><small>Scope <code>kobo.acquisition.delegate</code> — requis pour que Paris puisse confier un livre Kobo KDRM à Kobo-Adept. Peut transmettre temporairement un bearer Kobo au consommateur local.</small></span></label>
+            </div>
+            <div class="actions wrap top-gap"><button id="createApiTokenBtn" type="button">Créer un token API</button></div>
+            <pre id="apiTokenResult" class="diagnostic-output hidden" aria-live="polite"></pre>
+            <div id="apiTokensList" class="integration-list top-gap"></div>
+          </div>
+          <div class="panel library-sync-diagnostic-panel">
+            <p class="eyebrow">Diagnostic acquisition</p><h3>Livraison device / library_sync</h3>
+            <p class="muted-text">Teste jusqu’à trois livres de la bibliothèque actuellement synchronisée. Aucun ProductId personnel n’est embarqué dans le code source. Aucun UID hash ni secret n’est à copier. Le rapport est expurgé et ne télécharge pas le contenu des livres.</p>
+            <p class="muted-text">Si l’accès Provider Kobo n’est pas déjà activé, les jetons Kobo sont publiés chiffrés uniquement pendant le diagnostic puis supprimés automatiquement.</p>
+            <div class="actions wrap top-gap"><button id="runLibrarySyncProbeBtn" class="primary" type="button">Lancer le diagnostic library_sync</button><button id="copyLibrarySyncProbeBtn" class="ghost hidden" type="button">Copier le JSON</button><button id="downloadLibrarySyncProbeBtn" class="ghost hidden" type="button">Télécharger le JSON</button></div>
+            <pre id="librarySyncProbeResult" class="diagnostic-output hidden" aria-live="polite"></pre>
+          </div>
+          <div class="panel rating-diagnostic-panel">
+            <p class="eyebrow">Diagnostic</p><h3>Notes communautaires Kobo</h3>
+            <p class="muted-text">Teste un livre réel avec les endpoints Kobo détaillés, les avis et les pages publiques. Le diagnostic ne contient ni access token ni refresh token.</p>
+            <label>Livre
+              <select id="ratingDiagBook"><option value="">Choisir un livre…</option></select>
+            </label>
+            <div class="actions wrap top-gap"><button id="runRatingDiagBtn" class="primary" type="button">Tester la récupération</button><button id="refreshAllRatingsBtn" class="ghost" type="button">Actualiser toutes les notes</button><button id="copyRatingDiagBtn" class="ghost hidden" type="button">Copier le diagnostic</button></div>
+            <pre id="ratingDiagResult" class="diagnostic-output hidden" aria-live="polite"></pre>
+          </div>
+          <div class="panel">
+            <p class="eyebrow">Installation mobile</p><h3>Diagnostic Web App</h3>
+            <dl class="kv"><dt>Mode</dt><dd id="pwaMode">—</dd><dt>Manifest</dt><dd id="pwaManifest">—</dd><dt>Service worker</dt><dd id="pwaServiceWorker">—</dd><dt>Stockage persistant</dt><dd id="pwaStorage">—</dd></dl>
+            <div class="actions wrap"><button id="installAppBtn" class="primary hidden" type="button">Installer l’application</button><button id="refreshPwaBtn" class="ghost" type="button">Rafraîchir le diagnostic</button></div>
+            <p id="pwaInstallHelp" class="muted-text top-gap"></p>
+          </div>
+          <div class="panel">
+            <p class="eyebrow">Portabilité</p><h3>Exporter</h3>
+            <p>Les exports sont générés localement après déchiffrement.</p>
+            <div class="actions wrap"><button id="exportCsvBtn" type="button">Exporter CSV</button><button id="exportJsonBtn" type="button">Exporter JSON</button></div>
+            <hr>
+            <h3>Suppression</h3><p class="muted-text">Supprime définitivement le coffre distant D1. La copie locale de cet appareil est également effacée.</p>
+            <button id="deleteVaultBtn" class="danger" type="button">Supprimer le coffre</button>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

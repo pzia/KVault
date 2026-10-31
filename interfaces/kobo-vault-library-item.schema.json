@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kobo-vault.local/schemas/library-item-v2.2.json",
+  "title": "Kobo Vault Library Item",
+  "type": "object",
+  "required": [
+    "product_id",
+    "title",
+    "authors",
+    "owned",
+    "downloadable"
+  ],
+  "properties": {
+    "product_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "revision_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "isbn": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "subtitle": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "authors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "subjects": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "publisher": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "publication_date": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "description": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "cover_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "product_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "format": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "content_type": {
+      "type": "string"
+    },
+    "language": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "series": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "collection": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "owned": {
+      "type": "boolean"
+    },
+    "downloadable": {
+      "type": "boolean"
+    },
+    "archived": {
+      "type": "boolean"
+    },
+    "price": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "amount": {
+          "type": "string"
+        },
+        "currency": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "amount"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
