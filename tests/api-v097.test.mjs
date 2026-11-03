@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { normalizeLibrarySyncCandidates } from '../src/worker.js';
+import { normalizeAcquisitionCandidates, normalizeLibrarySyncCandidates } from '../src/worker.js';
 
 const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const html = fs.readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
@@ -30,6 +30,27 @@ assert.equal(candidates[0].kobo.display_profile, null);
 assert.equal(candidates[0].kobo.platform, 'Android');
 assert.equal(candidates[0].kobo.content_keys_present, true);
 assert.ok(!JSON.stringify(candidates).includes('sample'));
+
+
+// Content-access may include preview EPUBs, even if its separate KDRM
+// candidate is a complete owned book. Samples must not be published as full
+// acquisition offers or suppress library_sync pinned-KDRM lookup.
+const contentRows = normalizeAcquisitionCandidates({
+  ContentUrls: [
+    {DRMType:'KDRM',UrlFormat:'KEPUB',DownloadUrl:'https://storedownloads.kobo.com/full-kdrm'},
+    {DRMType:'SignedNoDrm',UrlFormat:'EPUB3FL_SAMPLE',DownloadUrl:'https://storedownloads.kobo.com/preview.epub'},
+    {DRMType:'SignedNoDrm',UrlFormat:'EPUB',Format:'EPUB3FL_SAMPLE',DownloadUrl:'https://storedownloads.kobo.com/preview-in-second-format.epub'}
+  ]
+});
+assert.equal(contentRows.length,1);
+assert.equal(contentRows[0].handling,'kobo_kdrm');
+assert.equal(contentRows[0].kobo.source,'content_access_book');
+assert.equal(normalizeAcquisitionCandidates({
+  ContentUrls:[{DRMType:'SignedNoDrm',Format:'EPUB3FL_SAMPLE',Url:'https://storedownloads.kobo.com/sample.epub'}]
+}).length,0);
+assert.equal(normalizeAcquisitionCandidates({
+  ContentUrls:[{DRMType:'SignedNoDrm',Format:'EPUB3',Url:'https://storedownloads.kobo.com/full.epub'}]
+}).length,1);
 
 // Paris preset: sensitive scope is explicit, visible and selected by default.
 assert.match(html, /id="apiTokenDelegate"[^>]*type="checkbox"[^>]*checked|id="apiTokenDelegate"[^>]*checked[^>]*type="checkbox"/);
