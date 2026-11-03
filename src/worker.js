@@ -1793,7 +1793,14 @@ async function v2Acquisition(request, env, client, productId) {
   const content = await contentAccessForBook(env, client.uid_hash, productId, row.revision_id || requestedRevision || "", displayProfile);
   const contentAccessCandidates = normalizeAcquisitionCandidates(content.payload, displayProfile);
   let librarySync = { candidates:[], status:"skipped", candidate_count:0, pages:0, event_count:0 };
-  if (!contentAccessCandidates.length) {
+  // Cifereca's pinned KDRM runtime needs an attested library_sync delivery
+  // candidate in addition to a separately delegated content-key replay.
+  // A content_access_book KDRM URL alone is not that pinned candidate:
+  // do not suppress the library_sync lookup just because such a URL exists.
+  // This is a SELECTED acquisition POST only, never inventory or catalog I/O.
+  const onlyUnpinnedKdrm = contentAccessCandidates.length > 0
+    && contentAccessCandidates.every(candidate => candidate.handling === "kobo_kdrm");
+  if (!contentAccessCandidates.length || onlyUnpinnedKdrm) {
     try {
       const resolved = await resolveLibrarySyncAcquisitionCandidates(env, client.uid_hash, content, productId, row.revision_id || requestedRevision || "");
       librarySync = { ...resolved, status:resolved.candidates.length ? "available" : "not_available", candidate_count:resolved.candidates.length };
