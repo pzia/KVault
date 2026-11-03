@@ -977,6 +977,13 @@ export function normalizeAcquisitionCandidates(payload, displayProfile = "Androi
   const seen = new Set();
   for (const raw of lists) {
     if (!raw || typeof raw !== "object") continue;
+    // content_access_book may supply an EPUB*_SAMPLE alongside the owned
+    // full KDRM item. A preview is not an acquired full book and must not
+    // suppress the pinned library_sync fallback or be returned as a valid
+    // full-file candidate. Apply the same exclusion to both advertised format
+    // fields, even when one takes precedence for normal format projection.
+    if ([raw.UrlFormat, raw.Format].some(value =>
+      typeof value === "string" && value.toUpperCase().includes("SAMPLE"))) continue;
     const drm = classifyKoboDrm(raw.DRMType || raw.DrmType || "unknown");
     const fmt = normalizeKoboMediaFormat(raw.UrlFormat || raw.Format || "unknown");
     const kind = fmt.media_format === "acsm" ? "acsm" : "http";

@@ -36,9 +36,20 @@ globalThis.fetch=async(input,init={})=>{
   const u=input instanceof URL?input:new URL(typeof input==='string'?input:input.url);
   if(u.pathname==='/v1/initialization') return new Response(JSON.stringify({Resources:{content_access_book:'https://storeapi.kobo.com/v1/products/books/{ProductId}/access',library_sync:'https://storeapi.kobo.com/v1/library/sync'}}),{status:200,headers:{'Content-Type':'application/json'}});
   if(u.pathname==='/v1/products/books/rev-sync/access') {
+    const kdrmCandidate = {
+      DRMType:'KDRM',UrlFormat:'KEPUB',
+      DownloadUrl:'https://storedownloads.kobo.com/book?token=content-only',
+    };
+    const previewCandidate = {
+      DRMType:'SignedNoDrm',UrlFormat:'EPUB3FL_SAMPLE',
+      DownloadUrl:'https://storedownloads.kobo.com/sample.epub',
+    };
     const candidate = contentAccessFormat === 'kdrm'
-      ? [{DRMType:'KDRM',UrlFormat:'KEPUB',
-          DownloadUrl:'https://storedownloads.kobo.com/book?token=content-only'}]
+      ? [kdrmCandidate]
+      : contentAccessFormat === 'kdrm_and_sample'
+      ? [kdrmCandidate,previewCandidate]
+      : contentAccessFormat === 'sample_only'
+      ? [previewCandidate]
       : contentAccessFormat === 'plain'
       ? [{DRMType:'SignedNoDrm',UrlFormat:'EPUB3',
           DownloadUrl:'https://storedownloads.kobo.com/plain.epub'}]
@@ -115,6 +126,39 @@ try {
   assert.equal(r.data.acquisition.candidates.length,1);
   assert.equal(r.data.acquisition.candidates[0].handling,'http_plain');
   assert.equal(r.data.acquisition.sources.library_sync.status,'skipped');
+
+  // Kobo can expose an EPUB3FL_SAMPLE beside a KDRM ContentUrl. Before
+  // filtering, the preview looked like a plain full book and prevented the
+  // library_sync pinned-KDRM fallback. Only the real candidates may survive.
+  contentAccessFormat = 'kdrm_and_sample';
+  r=await call('/api/v2/library/prod-sync/acquisition',{
+    method:'POST',headers:delegatedHeaders,
+    body:{mode:'delegated',include_acsm:false,display_profile:'Android'},
+  });
+  assert.equal(r.res.status,200);
+  assert.equal(syncReads,3);
+  assert.equal(r.data.acquisition.sources.library_sync.status,'available');
+  assert.equal(r.data.acquisition.candidates.length,2);
+  assert.ok(r.data.acquisition.candidates.every(candidate =>
+    !String(candidate.source_format).toUpperCase().includes('SAMPLE')));
+  assert.ok(r.data.acquisition.candidates.some(candidate =>
+    candidate.kobo.source==='library_sync' && candidate.handling==='kobo_kdrm'));
+  assert.equal(JSON.stringify(r.data).includes('sample.epub'),false);
+  assert.equal(JSON.stringify(r.data).includes('CONTENT_KEY_097_MUST_NOT_LEAK'),false);
+
+  // Even if a ContentUrls response contains only a preview, the selected
+  // purchase should continue to the full library_sync route.
+  contentAccessFormat = 'sample_only';
+  r=await call('/api/v2/library/prod-sync/acquisition',{
+    method:'POST',headers:delegatedHeaders,
+    body:{mode:'descriptor',include_acsm:false,display_profile:'Android'},
+  });
+  assert.equal(r.res.status,200);
+  assert.equal(syncReads,4);
+  assert.equal(r.data.acquisition.candidates.length,1);
+  assert.equal(r.data.acquisition.candidates[0].kobo.source,'library_sync');
+  assert.equal(r.data.acquisition.candidates[0].handling,'kobo_kdrm');
+  assert.equal(JSON.stringify(r.data).includes('sample.epub'),false);
 } finally { globalThis.fetch=originalFetch; }
 
 console.log('api-v097-integration.test.mjs: OK');
