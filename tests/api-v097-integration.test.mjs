@@ -30,14 +30,31 @@ assert.equal(r.res.status,403);
 assert.equal(r.data.error.code,'forbidden');
 
 const originalFetch=globalThis.fetch;
+let contentAccessFormat = 'empty';
+let syncReads = 0;
 globalThis.fetch=async(input,init={})=>{
   const u=input instanceof URL?input:new URL(typeof input==='string'?input:input.url);
   if(u.pathname==='/v1/initialization') return new Response(JSON.stringify({Resources:{content_access_book:'https://storeapi.kobo.com/v1/products/books/{ProductId}/access',library_sync:'https://storeapi.kobo.com/v1/library/sync'}}),{status:200,headers:{'Content-Type':'application/json'}});
-  if(u.pathname==='/v1/products/books/rev-sync/access') return new Response(JSON.stringify({ContentUrls:[],ContentKeys:[{Name:'OEBPS/a.xhtml',Value:'CONTENT_KEY_097_MUST_NOT_LEAK'}]}),{status:200,headers:{'Content-Type':'application/json'}});
-  if(u.pathname==='/v1/library/sync') return new Response(JSON.stringify([
+  if(u.pathname==='/v1/products/books/rev-sync/access') {
+    const candidate = contentAccessFormat === 'kdrm'
+      ? [{DRMType:'KDRM',UrlFormat:'KEPUB',
+          DownloadUrl:'https://storedownloads.kobo.com/book?token=content-only'}]
+      : contentAccessFormat === 'plain'
+      ? [{DRMType:'SignedNoDrm',UrlFormat:'EPUB3',
+          DownloadUrl:'https://storedownloads.kobo.com/plain.epub'}]
+      : [];
+    return new Response(JSON.stringify({
+      ContentUrls:candidate,
+      ContentKeys:[{Name:'OEBPS/a.xhtml',Value:'CONTENT_KEY_097_MUST_NOT_LEAK'}],
+    }),{status:200,headers:{'Content-Type':'application/json'}});
+  }
+  if(u.pathname==='/v1/library/sync') {
+    syncReads++;
+    return new Response(JSON.stringify([
     {NewEntitlement:{BookMetadata:{CrossRevisionId:'prod-sync',RevisionId:'rev-sync',DownloadUrls:[{DrmType:'KDRM',Format:'FLEPUB',Url:'https://storedownloads.kobo.com/download?downloadToken=first',Platform:'Android'}]}}},
     {NewEntitlement:{BookMetadata:{CrossRevisionId:'prod-sync',RevisionId:'rev-sync',DownloadUrls:[{DrmType:'KDRM',Format:'FLEPUB',Url:'https://storedownloads.kobo.com/download?downloadToken=duplicate',Platform:'Android'}]}}}
   ]),{status:200,headers:{'Content-Type':'application/json'}});
+  }
   throw new Error(`unexpected fetch ${u}`);
 };
 try {
@@ -59,6 +76,45 @@ try {
   assert.equal(r.data.acquisition.content_keys.values_exposed,false);
   assert.equal(JSON.stringify(r.data).includes('CONTENT_KEY_097_MUST_NOT_LEAK'),false);
   assert.equal(JSON.stringify(r.data).includes('REFRESH_097_SECRET'),false);
+  assert.equal(syncReads,1);
+
+  // The original KV fallback skipped library_sync as soon as a content
+  // access KDRM URL existed. Cifereca cannot execute that unpinned
+  // candidate: it requires library_sync plus a delegated replay recipe.
+  contentAccessFormat = 'kdrm';
+  r=await call('/api/v2/library/prod-sync/acquisition',{
+    method:'POST',headers:delegatedHeaders,
+    body:{mode:'delegated',include_acsm:false,display_profile:'Android'},
+  });
+  assert.equal(r.res.status,200);
+  assert.equal(syncReads,2);
+  assert.equal(r.data.acquisition.sources.library_sync.status,'available');
+  assert.equal(r.data.acquisition.candidates.length,2);
+  assert.deepEqual(new Set(r.data.acquisition.candidates.map(
+    candidate => candidate.kobo.source
+  )),new Set(['content_access_book','library_sync']));
+  const pinned=r.data.acquisition.candidates.find(
+    candidate => candidate.kobo.source==='library_sync'
+  );
+  assert.equal(pinned.handling,'kobo_kdrm');
+  assert.equal(pinned.media_format,'epub');
+  assert.equal(pinned.source_format,'FLEPUB');
+  assert.equal(pinned.kobo.platform,'Android');
+  assert.ok(r.data.acquisition.delegation.content_access_request);
+  assert.equal(JSON.stringify(r.data).includes('CONTENT_KEY_097_MUST_NOT_LEAK'),false);
+  assert.equal(JSON.stringify(r.data).includes('REFRESH_097_SECRET'),false);
+
+  // Plain downloadable content must NOT add an expensive library_sync scan.
+  contentAccessFormat = 'plain';
+  r=await call('/api/v2/library/prod-sync/acquisition',{
+    method:'POST',headers:delegatedHeaders,
+    body:{mode:'descriptor',include_acsm:false},
+  });
+  assert.equal(r.res.status,200);
+  assert.equal(syncReads,2);
+  assert.equal(r.data.acquisition.candidates.length,1);
+  assert.equal(r.data.acquisition.candidates[0].handling,'http_plain');
+  assert.equal(r.data.acquisition.sources.library_sync.status,'skipped');
 } finally { globalThis.fetch=originalFetch; }
 
 console.log('api-v097-integration.test.mjs: OK');
