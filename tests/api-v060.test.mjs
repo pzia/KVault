@@ -9,7 +9,7 @@ const sw = fs.readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8');
 const migration = fs.readFileSync(new URL('../migrations/0002_api_jobs.sql', import.meta.url), 'utf8');
 
 assert.match(worker, /const APP_RELEASE = "0\.9\.8"/);
-assert.match(app, /const APP_VERSION = '0\.9\.7'/);
+assert.match(app, /const APP_VERSION = '0\.9\.8'/);
 assert.match(sw, /kobo-vault-v098/);
 
 for (const table of ['account_projection','library_projection','api_tokens','agent_pairings','agents','jobs']) {
