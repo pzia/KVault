@@ -6,7 +6,7 @@ const app = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8'
 const sw = fs.readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8');
 
 assert.match(worker, /const APP_RELEASE = "0\.9\.8"/);
-assert.match(app, /const APP_VERSION = '0\.9\.7'/);
+assert.match(app, /const APP_VERSION = '0\.9\.8'/);
 assert.match(sw, /kobo-vault-v098/);
 assert.match(worker, /ReviewSummary\[ProductId\]\.AvgRating/);
 assert.match(worker, /node\.OpinionCount/);
