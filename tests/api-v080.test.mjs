@@ -9,7 +9,7 @@ const acquisition = JSON.parse(fs.readFileSync(new URL('../interfaces/kobo-vault
 const statusSchema = JSON.parse(fs.readFileSync(new URL('../interfaces/kobo-vault-status.schema.json', import.meta.url), 'utf8'));
 
 assert.match(worker, /const APP_RELEASE = "0\.9\.8"/);
-assert.match(app, /const APP_VERSION = '0\.9\.7'/);
+assert.match(app, /const APP_VERSION = '0\.9\.8'/);
 assert.ok(worker.includes('/api/v2/library/search'));
 assert.ok(worker.includes('kobo.acquisition.delegate'));
 assert.ok(worker.includes('mode === "delegated"'));
