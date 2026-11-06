@@ -240,7 +240,8 @@
             <label>Libellé
               <input id="apiTokenLabel" type="text" maxlength="80" value="Paris Library" autocomplete="off">
             </label>
-            <p class="muted-text">Preset Paris Library : catalogue Kobo, bibliothèque, acquisition et délégation KDRM.</p>
+            <p class="muted-text">Preset Paris Library : catalogue Kobo, bibliothèque, refresh explicite, acquisition et délégation KDRM.</p>
+            <label class="checkbox-line"><input id="apiTokenLibraryRefresh" type="checkbox" checked> <span><strong>Autoriser l’actualisation explicite de la bibliothèque</strong><small>Scope <code>kobo.library.refresh</code> — permet au client de demander une resynchronisation Kobo protégée par verrou, délai minimal et backoff. Les lectures du manifest restent passives.</small></span></label>
             <div class="delegate-scope-callout">
               <label class="checkbox-line delegate-scope"><input id="apiTokenDelegate" type="checkbox" checked> <span><strong>Autoriser l’acquisition déléguée KDRM</strong><small>Scope <code>kobo.acquisition.delegate</code> — requis pour que Paris puisse confier un livre Kobo KDRM à Kobo-Adept. Peut transmettre temporairement un bearer Kobo au consommateur local.</small></span></label>
             </div>
