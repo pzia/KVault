@@ -18,7 +18,7 @@ assert.match(worker, /LEGACY_API_V1_ENABLED/);
 assert.match(worker, /legacy_api_disabled/);
 assert.match(worker, /contract_revision:"2\.3\.3"/);
 assert.match(worker, /acquisition_schema_version:"1\.4"/);
-assert.match(app, /APP_VERSION = '0\.9\.7'/);
+assert.match(app, /APP_VERSION = '0\.9\.8'/);
 assert.match(app, /kobo-vault-v098/);
 assert.match(html, /apiTokenDelegate/);
 assert.match(html, /kobo\.acquisition\.delegate/);
