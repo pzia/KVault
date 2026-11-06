@@ -3,7 +3,7 @@ import fs from 'node:fs';
 const app = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
 const html = fs.readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
 const sw = fs.readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8');
-assert.match(app, /APP_VERSION = '0\.9\.7'/);
+assert.match(app, /APP_VERSION = '0\.9\.8'/);
 assert.match(app, /\/diagnostics\/library-sync/);
 assert.match(app, /temporaryAccess = true/);
 assert.match(app, /method:'DELETE'.*acquisition-access/s);
