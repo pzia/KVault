@@ -31,8 +31,8 @@ let workerRelease = null;
 const CATALOG_LOCAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const REMEMBER_SESSION_TTL_MS = 180 * 24 * 60 * 60 * 1000;
 const RATING_BATCH_SIZE = 6;
-const APP_VERSION = '0.9.7';
-const SW_CACHE_VERSION = 'kobo-vault-v097';
+const APP_VERSION = '0.9.8';
+const SW_CACHE_VERSION = 'kobo-vault-v098';
 
 init();
 
