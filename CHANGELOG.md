@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.9.8 — 2026-11-06
+
+- passe le contrat Provider à **2.3.4** sans modifier le schéma acquisition **1.4** ;
+- rend passives les lectures `/api/v2/library/manifest`, `/library/search` et `/library/{product_id}` : elles ne déclenchent plus de synchronisation Kobo implicite ;
+- ajoute `POST /api/v2/library/refresh`, protégé par le nouveau scope opt-in `kobo.library.refresh`, avec états typés, verrou/singleflight, délai minimal 5 min et backoff 15 min ;
+- conserve les anciens tokens sans élévation automatique ; le preset Paris Library permet explicitement d'accorder le scope de refresh ;
+- ajoute `refresh=true` à `GET /api/v2/catalog/search` pour contourner et remplacer la clé de cache Provider courante, avec `cache_status` et `origin_fetched_at` ;
+- invalide la fraîcheur de bibliothèque lorsque les credentials Provider Kobo sont republiés ;
+- ajoute `scripts/update_from_git` : résolution d'une ref GitHub vers un SHA immuable, téléchargement de l'archive exacte, validation transactionnelle via `update-from-zip.sh`, puis déploiement Cloudflare par défaut ;
+- ajoute `--dry-run`, `--no-deploy`, `--ref` et support optionnel de `GITHUB_TOKEN` à l'updater GitHub ;
+- conserve `wrangler.jsonc`, `.dev.vars`, `.wrangler/`, `.git/`, les données D1 et le mécanisme de rollback existant ;
+- ajoute les tests de contrat/intégration 0.9.8 et incrémente le cache PWA à `kobo-vault-v098` ;
+- aucune migration D1.
+
 ## 0.9.7 — 2026-09-30
 
 - supprime la création implicite d’un coffre lorsqu’un UID inconnu est saisi sur l’écran d’ouverture ; un UID inconnu renvoie désormais une erreur explicite ;
