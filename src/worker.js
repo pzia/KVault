@@ -1,4 +1,4 @@
-const APP_RELEASE = "0.9.7";
+const APP_RELEASE = "0.9.8";
 const PLATFORM_ID = "00000000-0000-0000-0000-000000000373";
 const DEFAULT_KOBO_APP_VERSION = "4.44.23552";
 const KOBO_AFFILIATE = "Kobo";
@@ -11,7 +11,7 @@ const API_MAX_PROJECTION_ITEMS = 5000;
 const API_PAIRING_TTL_MS = 10 * 60 * 1000;
 const API_AGENT_LEASE_MS = 5 * 60 * 1000;
 const API_ALLOWED_PARIS_SCOPES = new Set(["paris.read", "paris.jobs.create"]);
-const API_V2_SCOPES = new Set(["kobo.catalog.read", "kobo.library.read", "kobo.acquisition.read", "kobo.acquisition.delegate"]);
+const API_V2_SCOPES = new Set(["kobo.catalog.read", "kobo.library.read", "kobo.library.refresh", "kobo.acquisition.read", "kobo.acquisition.delegate"]);
 const API_V2_DEFAULT_SCOPES = ["kobo.catalog.read", "kobo.library.read", "kobo.acquisition.read"];
 const API_ACQUISITION_MAX_CANDIDATES = 20;
 const KOBO_FETCH_TIMEOUT_MS = 10_000;
@@ -19,6 +19,7 @@ const KOBO_FETCH_MAX_RETRIES = 2;
 const KOBO_FETCH_BASE_DELAY_MS = 250;
 const KOBO_FETCH_MAX_RETRY_AFTER_MS = 2_000;
 const LIBRARY_SYNC_FRESH_MS = 24 * 60 * 60 * 1000;
+const LIBRARY_SYNC_EXPLICIT_MIN_MS = 5 * 60 * 1000;
 const LIBRARY_SYNC_LOCK_MS = 5 * 60 * 1000;
 const LIBRARY_SYNC_FAILURE_BACKOFF_MS = 15 * 60 * 1000;
 const KOBO_RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
@@ -148,6 +149,10 @@ async function routeV2(request, env, url, ctx) {
   if (path === "/api/v2/catalog/search" && request.method === "GET") {
     requireApiScope(client, "kobo.catalog.read");
     return v2CatalogSearch(env, client, url, ctx);
+  }
+  if (path === "/api/v2/library/refresh" && request.method === "POST") {
+    requireApiScope(client, "kobo.library.refresh");
+    return v2LibraryRefresh(env, client);
   }
   if (path === "/api/v2/library/search" && request.method === "GET") {
     requireApiScope(client, "kobo.library.read");
@@ -287,6 +292,15 @@ function safeJsonParse(value, fallback) {
 
 function compactText(value, max = 500) {
   return String(value ?? "").trim().slice(0, max);
+}
+
+function strictOptionalBooleanQuery(url, name) {
+  const values = url.searchParams.getAll(name);
+  if (!values.length) return false;
+  if (values.length !== 1 || !["true", "false"].includes(values[0])) {
+    throw new HttpError(400, "invalid_request", `Paramètre ${name} invalide: true ou false attendu`);
+  }
+  return values[0] === "true";
 }
 
 function bearerToken(request) {
@@ -505,7 +519,7 @@ async function acquireLibraryRefreshLock(env, uidHash, nowMs = Date.now()) {
 async function resetLibrarySyncBackoff(env, uidHash) {
   await ensureLibrarySyncStateRow(env, uidHash);
   await env.KOBO_VAULT.prepare(
-    "UPDATE library_sync_state SET last_attempt_at = NULL, last_error = NULL, refresh_started_at = NULL, updated_at = ? WHERE uid_hash = ?"
+    "UPDATE library_sync_state SET last_success_at = NULL, last_attempt_at = NULL, last_error = NULL, refresh_started_at = NULL, updated_at = ? WHERE uid_hash = ?"
   ).bind(new Date().toISOString(), uidHash).run();
 }
 
@@ -667,6 +681,7 @@ async function v2Status(env, client) {
     { id:"catalog_search", access:"authenticated", scope:"kobo.catalog.read", available:true },
     { id:"library_search", access:"authenticated", scope:"kobo.library.read", available:true },
     { id:"library_manifest", access:"authenticated", scope:"kobo.library.read", available:true },
+    { id:"library_refresh", access:"authenticated", scope:"kobo.library.refresh", available:true },
     { id:"acquisition_info", access:"authenticated", scope:"kobo.acquisition.read", available:true },
     { id:"acquisition_drm_metadata", access:"authenticated", scope:"kobo.acquisition.read", available:true },
     { id:"acquisition_display_profiles", access:"authenticated", scope:"kobo.acquisition.read", available:true },
@@ -685,7 +700,7 @@ async function v2Status(env, client) {
   return json({
     ok:true,
     api_version:"2.3",
-    contract_revision:"2.3.3",
+    contract_revision:"2.3.4",
     acquisition_schema_version:"1.4",
     service:"kobo-vault",
     release:env.APP_VERSION || APP_RELEASE,
@@ -702,7 +717,6 @@ async function v2Status(env, client) {
 }
 
 async function v2LibraryBook(env, client, productId) {
-  await ensureFreshLibraryProjection(env, client.uid_hash);
   const row = await env.KOBO_VAULT.prepare("SELECT * FROM library_projection WHERE uid_hash = ? AND product_id = ?")
     .bind(client.uid_hash, productId).first();
   if (!row) throw new HttpError(404, "not_found", "Livre absent de la bibliothèque Kobo publiée");
@@ -787,7 +801,6 @@ async function v2LibrarySearch(env, client, url) {
   const field = apiSearchField(url);
   const limit = clampInt(url.searchParams.get("limit"), 1, 100, 50);
   const offset = decodeCursor(url.searchParams.get("cursor"));
-  if (offset === 0) await ensureFreshLibraryProjection(env, client.uid_hash);
   const like = `%${q.replaceAll("!", "!!").replaceAll("%", "!%").replaceAll("_", "!_")}%`;
   let condition = "(title LIKE ? ESCAPE '!' OR authors_json LIKE ? ESCAPE '!' OR isbn LIKE ? ESCAPE '!' OR publisher LIKE ? ESCAPE '!' OR description LIKE ? ESCAPE '!')";
   let args = [like, like, like, like, like];
@@ -855,19 +868,29 @@ async function v2CatalogSearch(env, client, url, ctx) {
   const language = compactText(url.searchParams.get("language"), 20).toLowerCase();
   const limit = clampInt(url.searchParams.get("limit"), 1, 100, 50);
   const page = clampInt(url.searchParams.get("page"), 0, 10000, 0);
+  const refresh = strictOptionalBooleanQuery(url, "refresh");
   const ttl = Math.min(Math.max(Number(env.CATALOG_CACHE_TTL_SECONDS) || 86400, 300), 604800);
   const cache = globalThis.caches?.default;
-  const cacheUrl = new URL("https://kobo-vault.invalid/__v2_catalog_v3");
+  const cacheUrl = new URL("https://kobo-vault.invalid/__v2_catalog_v4");
   cacheUrl.search = new URLSearchParams({ q:normalizeCachePart(q), field, language, limit:String(limit), page:String(page) }).toString();
   const cacheKey = new Request(cacheUrl.toString());
   let publicResult = null;
-  if (cache) {
+  let cacheStatus = refresh ? "revalidated" : "miss";
+  if (cache && !refresh) {
     const hit = await cache.match(cacheKey);
-    if (hit) publicResult = await hit.json();
+    if (hit) {
+      publicResult = await hit.json();
+      cacheStatus = "hit";
+    }
   }
   if (!publicResult) {
     const fetched = await fetchAnonymousCatalog(env, q, language, limit, page);
-    publicResult = { items:fetched.items, endpoint:fetched.endpoint, page_info:fetched.pageInfo };
+    publicResult = {
+      items:fetched.items,
+      endpoint:fetched.endpoint,
+      page_info:fetched.pageInfo,
+      origin_fetched_at:new Date().toISOString()
+    };
     if (cache) {
       const put = cache.put(cacheKey, json(publicResult, 200, { "Cache-Control":`public, max-age=${ttl}` }));
       if (ctx?.waitUntil) ctx.waitUntil(put); else await put;
@@ -893,8 +916,10 @@ async function v2CatalogSearch(env, client, url, ctx) {
     page,
     count:items.length,
     page_info:publicResult.page_info || {},
-    next_page:(publicResult.items || []).length >= limit ? page + 1 : null
-  });
+    next_page:(publicResult.items || []).length >= limit ? page + 1 : null,
+    cache_status:cacheStatus,
+    origin_fetched_at:publicResult.origin_fetched_at || null
+  }, 200, { "X-Kobo-Catalog-Cache":cacheStatus.toUpperCase() });
 }
 
 function sanitizeKoboDownloadUrl(value) {
@@ -1900,7 +1925,6 @@ async function v1Account(env, client) {
 async function v1Manifest(env, client, url) {
   const limit = clampInt(url.searchParams.get("limit"), 1, 500, 200);
   const offset = decodeCursor(url.searchParams.get("cursor"));
-  if (offset === 0) await ensureFreshLibraryProjection(env, client.uid_hash);
   const rows = await env.KOBO_VAULT.prepare(
     "SELECT * FROM library_projection WHERE uid_hash = ? ORDER BY product_id LIMIT ? OFFSET ?"
   ).bind(client.uid_hash, limit + 1, offset).all();
@@ -2486,19 +2510,51 @@ async function ensureAutoProjectionAccount(env, uidHash, bundle, now) {
   return { id:await sha256Hex(`kobo-account:${rawAccount}`), display_name:"Compte Kobo lié", email_hint:null };
 }
 
-export async function ensureFreshLibraryProjection(env, uidHash, nowMs = Date.now()) {
+async function refreshLibraryProjection(env, uidHash, { explicit = false, nowMs = Date.now() } = {}) {
   const state = await readLibrarySyncState(env, uidHash);
-  if (timestampIsWithin(state?.last_success_at, LIBRARY_SYNC_FRESH_MS, nowMs)) {
-    return { status:"fresh", last_success_at:state.last_success_at };
+  const freshnessMs = explicit ? LIBRARY_SYNC_EXPLICIT_MIN_MS : LIBRARY_SYNC_FRESH_MS;
+  if (timestampIsWithin(state?.last_success_at, freshnessMs, nowMs)) {
+    const successMs = Date.parse(String(state.last_success_at || ""));
+    const retryAfterSeconds = Number.isFinite(successMs)
+      ? Math.max(0, Math.ceil((successMs + freshnessMs - nowMs) / 1000))
+      : 0;
+    return {
+      status:"fresh",
+      last_success_at:state.last_success_at,
+      last_attempt_at:state?.last_attempt_at || null,
+      retry_after_seconds:retryAfterSeconds
+    };
   }
   if (timestampIsWithin(state?.refresh_started_at, LIBRARY_SYNC_LOCK_MS, nowMs)) {
-    return { status:"refreshing", last_success_at:state?.last_success_at || null };
+    return {
+      status:"refreshing",
+      last_success_at:state?.last_success_at || null,
+      last_attempt_at:state?.last_attempt_at || null,
+      retry_after_seconds:Math.ceil(LIBRARY_SYNC_LOCK_MS / 1000)
+    };
   }
   if (state?.last_error && timestampIsWithin(state?.last_attempt_at, LIBRARY_SYNC_FAILURE_BACKOFF_MS, nowMs)) {
-    return { status:"backoff", last_success_at:state?.last_success_at || null, error:state.last_error };
+    const attemptMs = Date.parse(String(state.last_attempt_at || ""));
+    const retryAfterSeconds = Number.isFinite(attemptMs)
+      ? Math.max(0, Math.ceil((attemptMs + LIBRARY_SYNC_FAILURE_BACKOFF_MS - nowMs) / 1000))
+      : Math.ceil(LIBRARY_SYNC_FAILURE_BACKOFF_MS / 1000);
+    return {
+      status:"backoff",
+      last_success_at:state?.last_success_at || null,
+      last_attempt_at:state?.last_attempt_at || null,
+      error:state.last_error,
+      retry_after_seconds:retryAfterSeconds
+    };
   }
   const locked = await acquireLibraryRefreshLock(env, uidHash, nowMs);
-  if (!locked) return { status:"refreshing", last_success_at:state?.last_success_at || null };
+  if (!locked) {
+    return {
+      status:"refreshing",
+      last_success_at:state?.last_success_at || null,
+      last_attempt_at:state?.last_attempt_at || null,
+      retry_after_seconds:Math.ceil(LIBRARY_SYNC_LOCK_MS / 1000)
+    };
+  }
 
   try {
     const credentials = await loadApiKoboCredentials(env, uidHash);
@@ -2514,12 +2570,32 @@ export async function ensureFreshLibraryProjection(env, uidHash, nowMs = Date.no
     const account = await ensureAutoProjectionAccount(env, uidHash, bundle, result.fetchedAt);
     await writeLibraryProjection(env, uidHash, items, account, result.fetchedAt);
     await markLibrarySyncSuccess(env, uidHash, result.fetchedAt);
-    return { status:"refreshed", count:items.length, last_success_at:result.fetchedAt };
+    return {
+      status:"refreshed",
+      count:items.length,
+      last_success_at:result.fetchedAt,
+      last_attempt_at:new Date(nowMs).toISOString(),
+      retry_after_seconds:Math.ceil(LIBRARY_SYNC_EXPLICIT_MIN_MS / 1000)
+    };
   } catch (error) {
     await markLibrarySyncFailure(env, uidHash, error);
-    // The Provider remains usable with its last published projection when Kobo is unavailable.
-    return { status:"stale", last_success_at:state?.last_success_at || null, error:error instanceof HttpError ? error.code : "library_refresh_failed" };
+    return {
+      status:state?.last_success_at ? "stale" : "failed",
+      last_success_at:state?.last_success_at || null,
+      last_attempt_at:new Date(nowMs).toISOString(),
+      error:error instanceof HttpError ? error.code : "library_refresh_failed",
+      retry_after_seconds:Math.ceil(LIBRARY_SYNC_FAILURE_BACKOFF_MS / 1000)
+    };
   }
+}
+
+export async function ensureFreshLibraryProjection(env, uidHash, nowMs = Date.now()) {
+  return refreshLibraryProjection(env, uidHash, { explicit:false, nowMs });
+}
+
+async function v2LibraryRefresh(env, client) {
+  const refresh = await refreshLibraryProjection(env, client.uid_hash, { explicit:true });
+  return json({ refresh }, 200, { "Cache-Control":"private, no-store", "Pragma":"no-cache" });
 }
 
 function validateKoboAuth(body) {
@@ -3117,7 +3193,7 @@ async function searchKoboCatalog(request, env, ctx) {
     const ttl = Math.min(Math.max(Number(env.CATALOG_CACHE_TTL_SECONDS) || 86400, 300), 604800);
     const cache = globalThis.caches?.default;
     const cacheUrl = new URL(request.url);
-    cacheUrl.pathname = "/__internal-cache/kobo-catalog-v3";
+    cacheUrl.pathname = "/__internal-cache/kobo-catalog-v4";
     cacheUrl.search = new URLSearchParams({ q: normalizeCachePart(query), language, pageSize: String(pageSize), pageIndex: String(pageIndex) }).toString();
     const cacheKey = new Request(cacheUrl.toString(), { method: "GET" });
 
@@ -3166,10 +3242,10 @@ async function searchKoboCatalog(request, env, ctx) {
     }
     return json({
       ...publicResult,
-      cacheStatus: forceRefresh ? "refresh" : "miss",
+      cacheStatus: forceRefresh ? "revalidated" : "miss",
       tokenRefreshed: refreshed,
       auth: refreshed ? { ...auth, appVersion } : undefined
-    }, 200, { "X-Kobo-Catalog-Cache": forceRefresh ? "REFRESH" : "MISS" });
+    }, 200, { "X-Kobo-Catalog-Cache": forceRefresh ? "REVALIDATED" : "MISS" });
   } catch (e) {
     if (e instanceof HttpError) return json({ error: e.code, message: e.message }, e.status);
     throw e;
