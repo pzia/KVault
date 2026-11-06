@@ -27,7 +27,7 @@ assert.equal(catalog[0].coverUrl,'https://cdn.kobo.com/book-images/catalog/0/0/F
 assert.equal(v2CatalogItem(catalog[0]).cover_url,'https://cdn.kobo.com/book-images/catalog/0/0/False/book.jpg');
 assert.match(v2CatalogItem({title:'Fallback',mediaType:'ebook',coverImageId:'fallback-id'}).cover_url,/fallback-id/);
 
-assert.match(worker,/__v2_catalog_v3/);
+assert.match(worker,/__v2_catalog_v4/);
 assert.match(worker,/__internal-cache\/kobo-catalog-v3/);
 assert.match(app,/book\?\.coverUrl/);
 assert.match(app,/projectionCoverUrl\(book\)/);
