@@ -5,7 +5,7 @@ const script = fs.readFileSync(new URL('../scripts/update-from-zip.sh', import.m
 const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const profile = fs.readFileSync(new URL('../docs/DISTRIBUTION_PROFILE.md', import.meta.url), 'utf8');
 
-assert.equal(pkg.version, '0.9.7');
+assert.equal(pkg.version, '0.9.8');
 assert.match(script, /--dry-run/);
 assert.match(script, /--rollback/);
 assert.match(script, /validate_zip_names/);
