@@ -5,7 +5,7 @@ import { normalizeLibrarySyncCandidates } from '../src/worker.js';
 const pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
 const schema=JSON.parse(fs.readFileSync(new URL('../interfaces/kobo-vault-acquisition.schema.json',import.meta.url),'utf8'));
 const openapi=fs.readFileSync(new URL('../interfaces/kobo-vault-openapi-v2.3.3.yaml',import.meta.url),'utf8');
-assert.equal(pkg.version,'0.9.7');
+assert.equal(pkg.version,'0.9.8');
 assert.equal(schema.properties.schema_version.const,'1.4');
 assert.ok(schema.properties.acquisition.properties.candidates.items.properties.kobo.properties.source.enum.includes('library_sync'));
 assert.match(openapi,/version: 2\.3\.3/);
