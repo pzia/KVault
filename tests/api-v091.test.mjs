@@ -10,7 +10,7 @@ const worker = fs.readFileSync(new URL('../src/worker.js', import.meta.url), 'ut
 const openapi = fs.readFileSync(new URL('../interfaces/kobo-vault-openapi-v2.3.yaml', import.meta.url), 'utf8');
 const schema = JSON.parse(fs.readFileSync(new URL('../interfaces/kobo-vault-acquisition.schema.json', import.meta.url), 'utf8'));
 
-assert.match(worker, /APP_RELEASE = "0\.9\.7"/);
+assert.match(worker, /APP_RELEASE = "0\.9\.8"/);
 assert.ok(worker.includes('api_version:"2.3"'));
 assert.ok(openapi.includes('version: 2.3.0'));
 assert.equal(schema.properties.schema_version.const, '1.4');
