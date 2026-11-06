@@ -10,5 +10,5 @@ assert.match(app, /method:'DELETE'.*acquisition-access/s);
 assert.match(app, /downloadLibrarySyncProbe/);
 assert.match(html, /Lancer le diagnostic library_sync/);
 assert.match(html, /Aucun UID hash ni secret n’est à copier/);
-assert.match(sw, /kobo-vault-v097/);
+assert.match(sw, /kobo-vault-v098/);
 console.log('ui v0.9.5.1 tests: ok');
