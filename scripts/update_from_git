@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# Récupère une révision KVault depuis GitHub, la valide avec l'updater
+# transactionnel puis la déploie. La révision distante est d'abord résolue en
+# SHA immuable afin que l'archive testée soit exactement celle déployée.
+set -Eeuo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO="${KOBO_VAULT_GITHUB_REPO:-pzia/KVault}"
+REF="${KOBO_VAULT_GITHUB_REF:-main}"
+DRY_RUN=0
+NO_DEPLOY=0
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  bash scripts/update_from_git [--ref REF] [--dry-run] [--no-deploy]
+
+Par défaut, résout pzia/KVault:main en SHA GitHub, télécharge cette révision,
+valide la distribution avec update-from-zip.sh puis déploie Cloudflare.
+
+Options:
+  --ref REF       branche, tag ou SHA GitHub à résoudre (défaut: main)
+  --dry-run       télécharge et valide sans modifier ni déployer
+  --no-deploy     met à jour localement après validation, sans wrangler deploy
+  -h, --help      affiche cette aide
+
+Variables:
+  KOBO_VAULT_GITHUB_REPO   dépôt owner/name (défaut pzia/KVault)
+  KOBO_VAULT_GITHUB_REF    ref par défaut
+  GITHUB_TOKEN             optionnel, pour l'API GitHub / rate limiting
+USAGE
+}
+
+while (($#)); do
+  case "$1" in
+    --ref)
+      (($# >= 2)) || { echo "--ref exige une valeur." >&2; exit 2; }
+      REF="$2"; shift 2 ;;
+    --dry-run) DRY_RUN=1; shift ;;
+    --no-deploy) NO_DEPLOY=1; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Argument inconnu: $1" >&2; usage; exit 2 ;;
+  esac
+done
+
+need() { command -v "$1" >/dev/null 2>&1 || { echo "La commande '$1' est requise." >&2; exit 1; }; }
+need curl
+need node
+need unzip
+need zipinfo
+
+[[ "$REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || { echo "Dépôt GitHub invalide: $REPO" >&2; exit 2; }
+[[ -n "$REF" && "$REF" != -* && "$REF" != *".."* ]] || { echo "Référence GitHub invalide." >&2; exit 2; }
+[[ -f "$ROOT/.project-id" ]] || { echo "Refus: installation KVault non reconnue (.project-id absent)." >&2; exit 1; }
+
+ENCODED_REF="$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]))' "$REF")"
+API_URL="https://api.github.com/repos/$REPO/commits/$ENCODED_REF"
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/kvault-github-update.XXXXXX")"
+trap 'rm -rf "$TMP"' EXIT
+META="$TMP/commit.json"
+ARCHIVE="$TMP/kvault.zip"
+
+CURL_HEADERS=(-H "Accept: application/vnd.github+json" -H "User-Agent: KVault-update_from_git")
+if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+  CURL_HEADERS+=(-H "Authorization: Bearer $GITHUB_TOKEN")
+fi
+
+echo "Résolution GitHub: $REPO @ $REF"
+curl --fail --silent --show-error --location "${CURL_HEADERS[@]}" "$API_URL" -o "$META"
+SHA="$(node - "$META" <<'NODE'
+const fs=require('fs');
+const value=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).sha;
+if(typeof value!=='string' || !/^[0-9a-f]{40}$/i.test(value)) process.exit(2);
+process.stdout.write(value.toLowerCase());
+NODE
+)"
+[[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "GitHub n'a pas renvoyé de SHA valide." >&2; exit 1; }
+
+ARCHIVE_URL="https://github.com/$REPO/archive/$SHA.zip"
+echo "Téléchargement de la révision immuable: $SHA"
+curl --fail --silent --show-error --location \
+  -H "User-Agent: KVault-update_from_git" "$ARCHIVE_URL" -o "$ARCHIVE"
+
+ARGS=("$ARCHIVE" "--install")
+if (( DRY_RUN )); then
+  ARGS+=("--dry-run")
+elif (( ! NO_DEPLOY )); then
+  ARGS+=("--deploy")
+fi
+
+echo "Validation et mise à jour via update-from-zip.sh…"
+bash "$ROOT/scripts/update-from-zip.sh" "${ARGS[@]}"
+echo "KVault synchronisé depuis GitHub: $REPO@$SHA"
