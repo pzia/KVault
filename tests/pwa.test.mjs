@@ -12,7 +12,7 @@ function pngSize(path){const b=fs.readFileSync(path);assert.equal(b.toString('as
 assert.deepEqual(pngSize('public/icons/icon-192.png'), [192,192]);
 assert.deepEqual(pngSize('public/icons/icon-512.png'), [512,512]);
 const sw = fs.readFileSync('public/sw.js','utf8');
-assert.match(sw, /kobo-vault-v097/);
+assert.match(sw, /kobo-vault-v098/);
 assert.match(sw, /manifest\.webmanifest/);
 assert.match(sw, /NETWORK_FIRST/);
 assert.match(sw, /cache: "no-store"/);
