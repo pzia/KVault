@@ -12,18 +12,18 @@ const ensureLock = fs.readFileSync(new URL('../scripts/ensure-lockfile.sh', impo
 const statusSchema = JSON.parse(fs.readFileSync(new URL('../interfaces/kobo-vault-status.schema.json', import.meta.url), 'utf8'));
 const openapi = fs.readFileSync(new URL('../interfaces/kobo-vault-openapi-v2.3.2.yaml', import.meta.url), 'utf8');
 
-assert.match(worker, /APP_RELEASE = "0\.9\.7"/);
+assert.match(worker, /APP_RELEASE = "0\.9\.8"/);
 assert.match(worker, /API_V2_DEFAULT_SCOPES = \["kobo\.catalog\.read", "kobo\.library\.read", "kobo\.acquisition\.read"\]/);
 assert.match(worker, /LEGACY_API_V1_ENABLED/);
 assert.match(worker, /legacy_api_disabled/);
 assert.match(worker, /contract_revision:"2\.3\.3"/);
 assert.match(worker, /acquisition_schema_version:"1\.4"/);
 assert.match(app, /APP_VERSION = '0\.9\.7'/);
-assert.match(app, /kobo-vault-v097/);
+assert.match(app, /kobo-vault-v098/);
 assert.match(html, /apiTokenDelegate/);
 assert.match(html, /kobo\.acquisition\.delegate/);
 assert.match(html, /checked/);
-assert.equal(pkg.version, '0.9.7');
+assert.equal(pkg.version, '0.9.8');
 assert.equal(pkg.devDependencies.wrangler, '4.30.0');
 assert.equal(lock.packages[''].devDependencies.wrangler, '4.30.0');
 assert.equal(lock.packages['node_modules/wrangler'].version, '4.30.0');
