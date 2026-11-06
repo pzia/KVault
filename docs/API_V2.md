@@ -1,15 +1,30 @@
-# Kobo Vault Provider API v2.3.3 — Kobo Vault 0.9.7
+# Kobo Vault Provider API v2.3.4 — Kobo Vault 0.9.8
 
 ## Versionnement
 
 - base URL inchangée : `/api/v2/` ;
 - `GET /api/v2/status` annonce toujours `api_version = 2.3` ;
-- la révision contractuelle courante est `2.3.2` ;
+- la révision contractuelle courante est `2.3.4` ;
 - acquisition : `schema_version = 1.4`.
 
-## Sécurité des scopes — 0.9.7
+## Revalidation explicite — 0.9.8
 
-Les scopes standards d’un token consommateur sont `kobo.catalog.read`, `kobo.library.read` et `kobo.acquisition.read`. Le scope sensible `kobo.acquisition.delegate` reste **explicite côté API serveur** : il ne doit jamais être déduit d’une omission de `scopes`. L’IHM 0.9.7 applique toutefois un preset **Paris Library** où cette case est visible et cochée par défaut, car KDRM exige le mode delegated. Les tokens existants ne sont pas élevés automatiquement.
+Les lectures Provider de bibliothèque sont désormais passives. `GET /library/manifest`, `GET /library/search` et `GET /library/{product_id}` ne déclenchent plus d'appel Kobo implicite.
+
+La revalidation privée est une action séparée :
+
+```http
+POST /api/v2/library/refresh
+Authorization: Bearer <kvt_...>
+```
+
+Elle exige le scope opt-in `kobo.library.refresh`. Le Worker applique un singleflight/verrou, un délai minimal de cinq minutes entre succès explicites et un backoff de quinze minutes après échec. Le résultat est `refreshed | fresh | refreshing | backoff | stale | failed`.
+
+Le catalogue Provider accepte `refresh=true` sur `GET /api/v2/catalog/search`. Cette option contourne puis remplace **la même clé de cache Provider** et la réponse expose `cache_status` ainsi que `origin_fetched_at`. Elle ne partage pas de données privées ni de token dans la clé.
+
+## Sécurité des scopes — 0.9.8
+
+Les scopes standards d’un token consommateur sont `kobo.catalog.read`, `kobo.library.read` et `kobo.acquisition.read`. Le scope `kobo.library.refresh` est séparé et opt-in. Le scope sensible `kobo.acquisition.delegate` reste **explicite côté API serveur** : il ne doit jamais être déduit d’une omission de `scopes`. L’IHM 0.9.8 applique toutefois un preset **Paris Library** où cette case est visible et cochée par défaut, car KDRM exige le mode delegated. Les tokens existants ne sont pas élevés automatiquement.
 
 Les routes `/api/v2/vault/{uid}/...` servent à l’administration par l’interface web de Vault (publication de projection, credentials d’acquisition, création/révocation des tokens). Elles sont internes et ne font pas partie du contrat Provider consommateur.
 

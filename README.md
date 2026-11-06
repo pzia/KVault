@@ -1,6 +1,6 @@
-# Kobo Library Vault — V0.9.7
+# Kobo Library Vault — V0.9.8
 
-> **0.9.7 — profils et acquisition KDRM** : le contrat Provider reste en API 2.3 (révision 2.3.3, acquisition 1.4). La création de coffre devient explicite, l’IHM sait basculer entre profils connus, le preset Paris Library coche par défaut le scope de délégation KDRM, et les recettes `library_sync` sont normalisées/dédupliquées plus strictement. Voir `docs/HANDOFF_0.9.7.md`.
+> **0.9.8 — revalidation explicite et mise à jour GitHub** : le contrat Provider passe à la révision 2.3.4 (acquisition 1.4 inchangée). Les lectures de bibliothèque sont passives, le refresh privé devient une action explicite scopée, le catalogue Provider sait revalider sa propre clé de cache, et `scripts/update_from_git` récupère une révision GitHub immuable puis la valide/déploie transactionnellement. Voir `docs/HANDOFF_0.9.8.md`.
 
 
 Webapp responsive et installable permettant de synchroniser une bibliothèque Kobo, la rechercher, comparer les achats au catalogue Kobo, marquer des titres comme déjà lus/connus, afficher des statistiques et synchroniser le tout entre appareils dans un coffre chiffré côté navigateur.
@@ -61,13 +61,13 @@ Webapp responsive et installable permettant de synchroniser une bibliothèque Ko
 - aide dédiée Firefox Android via le menu du navigateur lorsque ce mécanisme n’est pas exposé.
 
 
-## Profils Vault — V0.9.7
+## Profils Vault — V0.9.8
 
 La saisie d’un UID inconnu sur l’écran d’ouverture **ne crée plus de coffre**. La création est une action explicite : depuis un coffre ouvert, utilisez **Créer un nouveau compte Vault** ; sur une installation vierge sans aucun profil connu, un bootstrap de création explicite reste disponible. Les UIDs connus sur l’appareil sont proposés dans un sélecteur de profils. Ce registre local ne donne aucun droit croisé entre coffres : chaque profil conserve son authentification, son compte Kobo, sa projection et ses tokens Provider propres.
 
-## API fournisseur Kobo — V0.9.7 / contrat v2.3.3
+## API fournisseur Kobo — V0.9.8 / contrat v2.3.4
 
-La V0.9.7 conserve le contrat fournisseur **API 2.3 / révision 2.3.3** et le schéma acquisition **1.4**. Elle conserve la fraîcheur automatique introduite en 0.9.6.4 et renforce le chemin Paris/KDRM : le preset Paris Library coche par défaut `kobo.acquisition.delegate`, `FLEPUB` est normalisé en EPUB et les recettes `library_sync` séparent désormais le profil de requête du `platform` porté par la recette. `/api/v2/catalog/search` reste le catalogue Kobo global. Le principe reste : **Paris décide, Vault expose Kobo, Adept exécute localement**.
+La V0.9.8 conserve **API 2.3** et le schéma acquisition **1.4**, avec la révision contractuelle **2.3.4**. Les lectures de bibliothèque (`manifest`, `search`, détail) sont désormais passives : elles ne déclenchent plus une synchronisation Kobo cachée. Le client peut demander explicitement `POST /api/v2/library/refresh` avec le scope opt-in `kobo.library.refresh`. Le catalogue global accepte `refresh=true` pour contourner et remplacer la clé de cache Provider de la requête. Le principe reste : **Paris décide, Vault expose Kobo, Adept exécute localement**.
 
 Vault normalise désormais **`ContentUrls` et `DownloadUrls`**, ainsi que **`DownloadUrl` et `Url`**, conserve plusieurs candidats dédupliqués, et publie les headers nécessaires au transport. Une URL Amazon S3 déjà pré-signée n’est pas réécrite (notamment son paramètre `b`) afin de ne pas invalider sa signature. Les candidats issus de `content_access_book` incluent `x-amz-request-payer=requester`; en mode `delegated`, le Bearer Kobo n’est ajouté que lorsque le premier hop Kobo peut l’exiger. L’Authorization ne doit jamais être propagée vers un redirect cross-origin.
 
@@ -78,7 +78,8 @@ Routes cibles :
 ```text
 GET  /api/v2/status
 GET  /api/v2/account
-GET  /api/v2/catalog/search?q=...&field=...
+GET  /api/v2/catalog/search?q=...&field=...[&refresh=true]
+POST /api/v2/library/refresh
 GET  /api/v2/library/search?q=...&field=...
 GET  /api/v2/library/manifest
 GET  /api/v2/library/{product_id}
@@ -92,17 +93,18 @@ Scopes :
 ```text
 kobo.catalog.read
 kobo.library.read
+kobo.library.refresh
 kobo.acquisition.read
 kobo.acquisition.delegate
 ```
 
-Le scope `kobo.acquisition.delegate` est séparé volontairement car il autorise un mode d’acquisition sensible destiné à être remis à un outil local. Le défaut serveur générique reste au moindre privilège : si un client omet `scopes`, ce scope n’est pas ajouté. En revanche, dans l’IHM 0.9.7, le preset **Paris Library** le rend très visible et le coche par défaut car il est requis pour `kobo_kdrm`. Un token existant n’est jamais modifié : il faut le réémettre pour lui ajouter ce droit.
+Les scopes `kobo.library.refresh` et `kobo.acquisition.delegate` sont séparés volontairement des lectures. Le défaut serveur générique reste au moindre privilège : si un client omet `scopes`, aucun de ces scopes privilégiés n’est ajouté. Dans l’IHM 0.9.8, le preset **Paris Library** propose explicitement les deux. Un token existant n’est jamais modifié : il faut le réémettre pour lui ajouter un scope.
 
 Dans **Données → API fournisseur Kobo** :
 
 - **Publier le manifest** crée la projection serveur de métadonnées ;
 - **Créer un token API** crée un token consommateur `kvt_...`, stocké uniquement sous forme de SHA-256 ;
-- **Activer l’accès Provider Kobo** publie les credentials nécessaires à la résolution d’acquisition et au rafraîchissement autonome de bibliothèque.
+- **Activer l’accès Provider Kobo** publie les credentials nécessaires à la résolution d’acquisition et au refresh explicite de bibliothèque.
 
 ### Probe `library_sync` 0.9.5
 
@@ -265,7 +267,7 @@ Pour un coffre existant, utilisez **Données → Actualiser toutes les notes**. 
 ## Premier déploiement
 
 ```bash
-unzip kobo-library-vault-v0.9.5.zip
+unzip kobo-library-vault-v0.9.8.zip
 cd kobo-library-vault
 ./scripts/setup-cloudflare.sh
 ```
@@ -286,24 +288,51 @@ Pour redéployer :
 
 ## Mise à jour depuis une version précédente
 
+### Depuis GitHub
+
+Depuis une installation KVault existante, la commande recommandée est :
+
+```bash
+bash scripts/update_from_git
+```
+
+Elle résout `pzia/KVault:main` en SHA GitHub immuable, télécharge exactement cette révision, puis réutilise l'updater transactionnel : staging, `npm ci`, tests, sauvegarde locale, migrations D1 et déploiement Wrangler. `wrangler.jsonc`, `.dev.vars`, `.wrangler/` et `.git/` restent préservés.
+
+Prévalidation sans modification :
+
+```bash
+bash scripts/update_from_git --dry-run
+```
+
+Révision précise ou mise à jour locale sans déploiement :
+
+```bash
+bash scripts/update_from_git --ref <tag-branche-ou-sha>
+bash scripts/update_from_git --no-deploy
+```
+
+`GITHUB_TOKEN` est optionnel et sert uniquement à l'accès/rate limiting GitHub ; il n'est pas transmis à Cloudflare ni inclus dans la distribution.
+
+### Depuis un ZIP
+
 Depuis le répertoire de votre installation actuelle :
 
 ```bash
-./scripts/update-from-zip.sh ~/Téléchargements/kobo-library-vault-v0.9.5.zip --install --deploy
+./scripts/update-from-zip.sh ~/Téléchargements/kobo-library-vault-v0.9.8.zip --install --deploy
 ```
 
-La V0.9.5 conserve le pipeline transactionnel : l’archive est validée et extraite en staging, la release candidate est testée avant toute bascule locale et, avec `--deploy`, elle est déployée depuis le staging validé.
+La V0.9.8 conserve le pipeline transactionnel : l’archive est validée et extraite en staging, la release candidate est testée avant toute bascule locale et, avec `--deploy`, elle est déployée depuis le staging validé.
 
 Prévalidation sans effet de bord :
 
 ```bash
-./scripts/update-from-zip.sh ~/Téléchargements/kobo-library-vault-v0.9.5.zip --dry-run
+./scripts/update-from-zip.sh ~/Téléchargements/kobo-library-vault-v0.9.8.zip --dry-run
 ```
 
 Sans déploiement immédiat :
 
 ```bash
-./scripts/update-from-zip.sh ~/Téléchargements/kobo-library-vault-v0.9.5.zip --install
+./scripts/update-from-zip.sh ~/Téléchargements/kobo-library-vault-v0.9.8.zip --install
 ```
 
 Rollback vers la dernière sauvegarde transactionnelle :
@@ -322,7 +351,7 @@ Le script préserve :
 
 Avec `--install`, `node_modules/` n’est remplacé qu’après installation et tests réussis dans le staging. Les sauvegardes de distribution sont placées dans `../.kobo-library-vault-backups/` et n’embarquent ni configuration locale ni secret. Trois sauvegardes sont conservées par défaut (`KOBO_VAULT_KEEP_BACKUPS` permet de changer cette valeur).
 
-La V0.9.5 ne nécessite **aucune nouvelle migration D1**. Le protocole reste en **v2.3**, avec la révision compatible **v2.3.2** et le schéma acquisition **1.3** ; voir `interfaces/MIGRATION_V2.3.1_TO_V2.3.2.md`. Voir `docs/DISTRIBUTION_PROFILE.md` pour l’adaptation du blueprint commun à Kobo Vault.
+La V0.9.8 ne nécessite **aucune nouvelle migration D1**. Le protocole reste en **v2.3**, avec la révision **v2.3.4** et le schéma acquisition **1.4** ; voir `interfaces/MIGRATION_V2.3.3_TO_V2.3.4.md`. Voir `docs/DISTRIBUTION_PROFILE.md` pour l’adaptation du blueprint commun à Kobo Vault.
 
 ## Configuration Cloudflare
 
@@ -408,7 +437,8 @@ public/icons/                     icônes PWA
 src/worker.js                     API Cloudflare + connecteur Kobo + cache
 migrations/0001_init.sql          D1
 scripts/setup-cloudflare.sh       premier déploiement
-scripts/update-from-zip.sh        auto-update
+scripts/update-from-zip.sh        mise à jour transactionnelle depuis ZIP
+scripts/update_from_git            récupération GitHub + validation + déploiement
 scripts/deploy.sh                 déploiement courant
 tests/                            non-régressions
 ```

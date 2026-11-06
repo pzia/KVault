@@ -13,7 +13,7 @@ const els = Object.fromEntries([
   'settingsUpdated','appVersion','workerVersion','sessionPersistence','sessionExpiry','cacheVersion','syncNowBtn','exportCsvBtn','exportJsonBtn','deleteVaultBtn','pwaMode','pwaManifest','pwaServiceWorker','pwaStorage','installAppBtn','refreshPwaBtn','pwaInstallHelp',
   'ratingDiagBook','runRatingDiagBtn','copyRatingDiagBtn','refreshAllRatingsBtn','ratingDiagResult',
   'runLibrarySyncProbeBtn','copyLibrarySyncProbeBtn','downloadLibrarySyncProbeBtn','librarySyncProbeResult',
-  'projectionStatus','acquisitionAccessStatus','publishProjectionBtn','removeProjectionBtn','publishAcquisitionAccessBtn','removeAcquisitionAccessBtn','refreshIntegrationsBtn','apiTokenLabel','apiTokenDelegate','createApiTokenBtn','apiTokenResult','apiTokensList','knownProfilesSelect','switchProfileBtn','newVaultUid','newVaultPassword','newVaultPasswordConfirm','createVaultBtn','createVaultMessage','toast'
+  'projectionStatus','acquisitionAccessStatus','publishProjectionBtn','removeProjectionBtn','publishAcquisitionAccessBtn','removeAcquisitionAccessBtn','refreshIntegrationsBtn','apiTokenLabel','apiTokenLibraryRefresh','apiTokenDelegate','createApiTokenBtn','apiTokenResult','apiTokensList','knownProfilesSelect','switchProfileBtn','newVaultUid','newVaultPassword','newVaultPasswordConfirm','createVaultBtn','createVaultMessage','toast'
 ].map(id => [id, $(id)]));
 
 let session = null;
@@ -31,8 +31,8 @@ let workerRelease = null;
 const CATALOG_LOCAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const REMEMBER_SESSION_TTL_MS = 180 * 24 * 60 * 60 * 1000;
 const RATING_BATCH_SIZE = 6;
-const APP_VERSION = '0.9.7';
-const SW_CACHE_VERSION = 'kobo-vault-v097';
+const APP_VERSION = '0.9.8';
+const SW_CACHE_VERSION = 'kobo-vault-v098';
 
 init();
 
@@ -825,7 +825,8 @@ function renderApiTokens(items) {
   for (const token of v2) {
     const used = token.last_used_at ? ` · utilisé ${formatDate(token.last_used_at)}` : '';
     const hasDelegate = (token.scopes || []).includes('kobo.acquisition.delegate');
-    const warning = hasDelegate ? '' : ' · ⚠ KDRM délégué indisponible';
+    const hasLibraryRefresh = (token.scopes || []).includes('kobo.library.refresh');
+    const warning = `${hasDelegate ? '' : ' · ⚠ KDRM délégué indisponible'}${hasLibraryRefresh ? '' : ' · ⚠ refresh bibliothèque explicite indisponible'}`;
     const row = integrationItem(token.label || token.id, `${(token.scopes || []).join(', ')}${warning} · créé ${formatDate(token.created_at)}${used}`, 'Révoquer', async () => {
       if (!confirm(`Révoquer le token « ${token.label || token.id} » ?`)) return;
       try {
@@ -845,7 +846,7 @@ async function createConsumerApiToken() {
     const label = String(els.apiTokenLabel?.value || 'Paris Library').trim() || 'Paris Library';
     const data = await api(`/api/v2/vault/${session.uidHash}/api-tokens`, {
       method:'POST', headers:vaultHeaders(session.authSecret),
-      body:{ label, scopes:[...['kobo.catalog.read','kobo.library.read','kobo.acquisition.read'], ...(els.apiTokenDelegate?.checked ? ['kobo.acquisition.delegate'] : [])] }
+      body:{ label, scopes:[...['kobo.catalog.read','kobo.library.read','kobo.acquisition.read'], ...(els.apiTokenLibraryRefresh?.checked ? ['kobo.library.refresh'] : []), ...(els.apiTokenDelegate?.checked ? ['kobo.acquisition.delegate'] : [])] }
     });
     const value = data.token?.value || '';
     if (els.apiTokenResult) {

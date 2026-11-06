@@ -60,7 +60,7 @@ assert.equal(r.res.status,200);
 let state=await d1.prepare('SELECT * FROM library_sync_state WHERE uid_hash=?').bind(uid).first();
 assert.equal(state.last_success_at,oldSync);
 
-r=await call(`/api/v2/vault/${uid}/api-tokens`,{method:'POST',headers:vaultHeaders,body:{label:'Paris',scopes:['kobo.library.read']}});
+r=await call(`/api/v2/vault/${uid}/api-tokens`,{method:'POST',headers:vaultHeaders,body:{label:'Paris',scopes:['kobo.library.read','kobo.library.refresh']}});
 assert.equal(r.res.status,201);
 const apiHeaders={Authorization:`Bearer ${r.data.token.value}`};
 await call(`/api/v2/vault/${uid}/acquisition-access`,{method:'PUT',headers:vaultHeaders,body:{
@@ -89,9 +89,18 @@ globalThis.fetch=async(input)=>{
 };
 
 try {
-  // First page of the Provider manifest is stale: it refreshes Kobo synchronously.
+  // Provider reads are passive in 0.9.8: the stale D1 projection is returned
+  // until a privileged client explicitly asks for a Kobo refresh.
   r=await call('/api/v2/library/manifest?limit=200',{headers:apiHeaders});
   assert.equal(r.res.status,200);
+  assert.deepEqual(r.data.items.map(x=>x.product_id),['old-prod']);
+  assert.equal(initCalls,0);
+  assert.equal(syncCalls,0);
+
+  r=await call('/api/v2/library/refresh',{method:'POST',headers:apiHeaders});
+  assert.equal(r.res.status,200);
+  assert.equal(r.data.refresh.status,'refreshed');
+  r=await call('/api/v2/library/manifest?limit=200',{headers:apiHeaders});
   assert.deepEqual(r.data.items.map(x=>x.product_id),['fresh-prod']);
   assert.equal(r.data.items[0].cover_url,'https://cdn.kobo.com/book-images/fresh/image.jpg');
   assert.equal(initCalls,1);
@@ -103,9 +112,10 @@ try {
   assert.equal(state.last_error,null);
   assert.equal(state.refresh_started_at,null);
 
-  // A second call inside 24h serves D1 and does not contact Kobo.
-  r=await call('/api/v2/library/manifest?limit=200',{headers:apiHeaders});
+  // A second explicit refresh inside the protected minimum interval is cheap.
+  r=await call('/api/v2/library/refresh',{method:'POST',headers:apiHeaders});
   assert.equal(r.res.status,200);
+  assert.equal(r.data.refresh.status,'fresh');
   assert.equal(initCalls,1);
   assert.equal(syncCalls,1);
 
@@ -119,6 +129,11 @@ try {
   assert.equal(state.last_success_at,oldSync);
   r=await call('/api/v2/library/manifest?limit=200',{headers:apiHeaders});
   assert.equal(r.res.status,200);
+  assert.equal(r.data.items[0].product_id,'stale-browser');
+  assert.equal(initCalls,1);
+  r=await call('/api/v2/library/refresh',{method:'POST',headers:apiHeaders});
+  assert.equal(r.data.refresh.status,'refreshed');
+  r=await call('/api/v2/library/manifest?limit=200',{headers:apiHeaders});
   assert.equal(r.data.items[0].product_id,'fresh-prod');
   assert.equal(initCalls,2);
   assert.equal(syncCalls,2);
@@ -130,26 +145,30 @@ try {
   assert.equal(r.res.status,200);
   assert.equal(initCalls,2);
 
-  // If another Paris instance already owns the refresh lock, serve the current projection.
-  await d1.prepare('UPDATE library_sync_state SET refresh_started_at=?, last_attempt_at=? WHERE uid_hash=?').bind(new Date().toISOString(),new Date().toISOString(),uid).run();
-  r=await call('/api/v2/library/manifest?limit=200',{headers:apiHeaders});
+  // If another client already owns the refresh lock, the explicit command
+  // reports refreshing and never contacts Kobo again.
+  await d1.prepare('UPDATE library_sync_state SET last_success_at=?, refresh_started_at=?, last_attempt_at=? WHERE uid_hash=?')
+    .bind(oldSync,new Date().toISOString(),new Date().toISOString(),uid).run();
+  r=await call('/api/v2/library/refresh',{method:'POST',headers:apiHeaders});
   assert.equal(r.res.status,200);
-  assert.equal(r.data.items[0].product_id,'fresh-prod');
+  assert.equal(r.data.refresh.status,'refreshing');
   assert.equal(initCalls,2);
 
-  // On Kobo failure, keep serving the last projection and back off subsequent calls.
+  // On Kobo failure, keep the last projection and report stale; the next
+  // explicit request is rejected locally by the 15-minute backoff.
   await d1.prepare('UPDATE library_sync_state SET refresh_started_at=NULL, last_attempt_at=NULL, last_error=NULL, last_success_at=? WHERE uid_hash=?').bind(oldSync,uid).run();
   mode='fail';
-  r=await call('/api/v2/library/manifest?limit=200',{headers:apiHeaders});
+  r=await call('/api/v2/library/refresh',{method:'POST',headers:apiHeaders});
   assert.equal(r.res.status,200);
-  assert.equal(r.data.items[0].product_id,'fresh-prod');
+  assert.equal(r.data.refresh.status,'stale');
   assert.equal(initCalls,3);
   state=await d1.prepare('SELECT * FROM library_sync_state WHERE uid_hash=?').bind(uid).first();
   assert.match(state.last_error,/kobo_refresh_failed/);
   assert.equal(state.refresh_started_at,null);
 
-  r=await call('/api/v2/library/manifest?limit=200',{headers:apiHeaders});
+  r=await call('/api/v2/library/refresh',{method:'POST',headers:apiHeaders});
   assert.equal(r.res.status,200);
+  assert.equal(r.data.refresh.status,'backoff');
   assert.equal(initCalls,3,'15-minute failure backoff prevents an API request storm');
 } finally {
   globalThis.fetch=originalFetch;

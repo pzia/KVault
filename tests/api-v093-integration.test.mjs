@@ -33,7 +33,7 @@ async function call(env,path,{method='GET',headers={},body}={}){const h=new Head
   const r=await call(env,'/api/v2/status');
   assert.equal(r.res.status,200);
   assert.equal(r.data.api_version,'2.3');
-  assert.equal(r.data.contract_revision,'2.3.3');
+  assert.equal(r.data.contract_revision,'2.3.4');
   assert.equal(r.data.acquisition_schema_version,'1.4');
 }
 

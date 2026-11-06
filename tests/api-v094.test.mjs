@@ -6,8 +6,8 @@ const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.ur
 const workerSource = fs.readFileSync(new URL('../src/worker.js', import.meta.url), 'utf8');
 const openapi = fs.readFileSync(new URL('../interfaces/kobo-vault-openapi-v2.3.2.yaml', import.meta.url), 'utf8');
 
-assert.equal(pkg.version, '0.9.7');
-assert.match(workerSource, /APP_RELEASE = "0\.9\.7"/);
+assert.equal(pkg.version, '0.9.8');
+assert.match(workerSource, /APP_RELEASE = "0\.9\.8"/);
 assert.match(workerSource, /KOBO_FETCH_TIMEOUT_MS = 10_000/);
 assert.match(workerSource, /KOBO_FETCH_MAX_RETRIES = 2/);
 assert.match(openapi, /version: 2\.3\.2/); // 0.9.5 intentionally does not revise the Provider contract.

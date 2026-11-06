@@ -1,11 +1,11 @@
 openapi: 3.1.0
 info:
   title: Kobo Vault Provider API
-  version: 2.3.3
+  version: 2.3.4
   description: >-
     Interface publique de Kobo Vault en tant que fournisseur spécialisé Kobo.
     Paris Library ou tout autre consommateur orchestre les actions locales.
-    La révision 2.3.3 ajoute library_sync comme source normalisée de candidats device.
+    La révision 2.3.4 rend explicites la revalidation du catalogue et le refresh privé de bibliothèque, tout en conservant l'acquisition 1.4.
 servers:
   - url: https://{host}/api/v2
     variables:
@@ -89,6 +89,15 @@ paths:
             type: integer
             minimum: 0
             default: 0
+        - name: refresh
+          in: query
+          required: false
+          description: >-
+            Lorsque true, contourne le cache Provider pour cette requête
+            normalisée, relit Kobo et remplace la valeur positive correspondante.
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
           description: Résultats Kobo enrichis avec l'état de possession
@@ -115,6 +124,12 @@ paths:
                     additionalProperties: true
                   next_page:
                     type: [integer, 'null']
+                  cache_status:
+                    type: string
+                    enum: [hit, miss, revalidated]
+                  origin_fetched_at:
+                    type: [string, 'null']
+                    format: date-time
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -125,6 +140,66 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '502':
           $ref: '#/components/responses/UpstreamError'
+  /library/refresh:
+    post:
+      summary: Revalider explicitement la projection de bibliothèque Kobo
+      description: >-
+        Demande une synchronisation privée du compte lié. Cette opération est
+        distincte des lectures de manifest/recherche, qui restent passives.
+        Le Worker applique un verrou singleflight, un délai minimal entre
+        succès et un backoff après échec.
+      operationId: refreshLibrary
+      security:
+        - bearerAuth: []
+      x-required-scope: kobo.library.refresh
+      responses:
+        '200':
+          description: État de la tentative de revalidation
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: 'private, no-store'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [refresh]
+                properties:
+                  refresh:
+                    type: object
+                    required: [status]
+                    properties:
+                      status:
+                        type: string
+                        enum: [refreshed, fresh, refreshing, backoff, stale, failed]
+                      count:
+                        type: integer
+                        minimum: 0
+                      last_success_at:
+                        type: [string, 'null']
+                        format: date-time
+                      last_attempt_at:
+                        type: [string, 'null']
+                        format: date-time
+                      retry_after_seconds:
+                        type: integer
+                        minimum: 0
+                      error:
+                        type: string
+                    additionalProperties: false
+                additionalProperties: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Accès Provider Kobo non publié
+          content:
+            application/json:
+              schema:
+                $ref: './kobo-vault-error.schema.json'
+
   /library/search:
     get:
       summary: Rechercher dans la bibliothèque Kobo projetée

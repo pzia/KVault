@@ -6,9 +6,9 @@ const model=fs.readFileSync('public/model.js','utf8');
 const worker=fs.readFileSync('src/worker.js','utf8');
 const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
 
-assert.equal(pkg.version,'0.9.7');
-assert.match(worker,/APP_RELEASE = "0\.9\.7"/);
-assert.match(app,/APP_VERSION = '0\.9\.7'/);
+assert.equal(pkg.version,'0.9.8');
+assert.match(worker,/APP_RELEASE = "0\.9\.8"/);
+assert.match(app,/APP_VERSION = '0\.9\.8'/);
 assert.match(app,/schema: 4/);
 assert.match(model,/schema:4/);
 assert.doesNotMatch(model,/catalogCache:\{\.\.\./);

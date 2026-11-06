@@ -5,7 +5,7 @@ import { normalizeAcquisitionCandidates } from '../src/worker.js';
 const worker = fs.readFileSync(new URL('../src/worker.js', import.meta.url), 'utf8');
 const openapi = fs.readFileSync(new URL('../interfaces/kobo-vault-openapi-v2.3.1.yaml', import.meta.url), 'utf8');
 
-assert.match(worker, /APP_RELEASE = "0\.9\.7"/);
+assert.match(worker, /APP_RELEASE = "0\.9\.8"/);
 assert.ok(worker.includes('api_version:"2.3"'));
 assert.ok(openapi.includes('version: 2.3.1'));
 
