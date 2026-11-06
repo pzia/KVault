@@ -1,4 +1,4 @@
-const CACHE = "kobo-vault-v097";
+const CACHE = "kobo-vault-v098";
 const ASSETS = [
   "/", "/index.html", "/app.css", "/app.js", "/crypto.js", "/storage.js", "/model.js",
   "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/icon-512-maskable.png"
