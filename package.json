@@ -1,15 +1,16 @@
 {
   "name": "kobo-library-vault",
-  "version": "0.9.7",
+  "version": "0.9.8",
   "private": true,
   "type": "module",
   "description": "Webapp Cloudflare Workers + D1 pour synchroniser et explorer une bibliothèque Kobo chiffrée côté client.",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "update:git": "bash scripts/update_from_git",
     "db:migrate:local": "wrangler d1 migrations apply KOBO_VAULT --local",
     "db:migrate:remote": "wrangler d1 migrations apply KOBO_VAULT --remote",
-    "check": "node --check src/worker.js && node --check public/app.js && node --check public/crypto.js && node --check public/storage.js && node --check public/model.js && node tests/model.test.mjs && node tests/kobo-normalize.test.mjs && node tests/crypto.test.mjs && node tests/pwa.test.mjs && node tests/navigation.test.mjs && node tests/ui-v05.test.mjs && node tests/ui-v051.test.mjs && node tests/ui-v052.test.mjs && node tests/ui-v053.test.mjs && node tests/ui-v054.test.mjs && node tests/api-v060.test.mjs && node tests/api-v060-integration.test.mjs && node tests/api-v070.test.mjs && node tests/api-v070-integration.test.mjs && node tests/api-v080.test.mjs && node tests/api-v080-integration.test.mjs && node tests/update-v081.test.mjs && node tests/api-v090.test.mjs && node tests/api-v091.test.mjs && node tests/api-v091-integration.test.mjs && node tests/api-v092.test.mjs && node tests/api-v092-integration.test.mjs && node tests/api-v093.test.mjs && node tests/api-v093-integration.test.mjs && node tests/api-v094.test.mjs && node tests/api-v095.test.mjs && node tests/ui-v0951.test.mjs && node tests/api-v096.test.mjs && node tests/api-v096-integration.test.mjs && node tests/api-v0962.test.mjs && node tests/api-v0963.test.mjs && node tests/api-v0964-integration.test.mjs && node tests/api-v097.test.mjs && node tests/ui-v097.test.mjs && node tests/api-v097-integration.test.mjs"
+    "check": "node --check src/worker.js && node --check public/app.js && node --check public/crypto.js && node --check public/storage.js && node --check public/model.js && node tests/model.test.mjs && node tests/kobo-normalize.test.mjs && node tests/crypto.test.mjs && node tests/pwa.test.mjs && node tests/navigation.test.mjs && node tests/ui-v05.test.mjs && node tests/ui-v051.test.mjs && node tests/ui-v052.test.mjs && node tests/ui-v053.test.mjs && node tests/ui-v054.test.mjs && node tests/api-v060.test.mjs && node tests/api-v060-integration.test.mjs && node tests/api-v070.test.mjs && node tests/api-v070-integration.test.mjs && node tests/api-v080.test.mjs && node tests/api-v080-integration.test.mjs && node tests/update-v081.test.mjs && node tests/api-v090.test.mjs && node tests/api-v091.test.mjs && node tests/api-v091-integration.test.mjs && node tests/api-v092.test.mjs && node tests/api-v092-integration.test.mjs && node tests/api-v093.test.mjs && node tests/api-v093-integration.test.mjs && node tests/api-v094.test.mjs && node tests/api-v095.test.mjs && node tests/ui-v0951.test.mjs && node tests/api-v096.test.mjs && node tests/api-v096-integration.test.mjs && node tests/api-v0962.test.mjs && node tests/api-v0963.test.mjs && node tests/api-v0964-integration.test.mjs && node tests/api-v097.test.mjs && node tests/ui-v097.test.mjs && node tests/api-v097-integration.test.mjs && node tests/api-v098.test.mjs && node tests/api-v098-integration.test.mjs && node tests/update-from-git.test.mjs"
   },
   "devDependencies": {
     "wrangler": "4.30.0"
