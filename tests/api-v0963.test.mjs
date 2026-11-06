@@ -19,6 +19,6 @@ const direct=extractCatalogBooks({Products:[{Book:{Title:'Direct image',Revision
 assert.equal(v2CatalogItem(direct[0]).cover_url,'https://cdn.kobo.com/book-images/direct/image.jpg');
 
 assert.match(worker,/__v2_catalog_v4/);
-assert.match(worker,/__internal-cache\/kobo-catalog-v3/);
+assert.match(worker,/__internal-cache\/kobo-catalog-v4/);
 assert.match(sw,/kobo-vault-v098/);
 console.log('api-v0963.test.mjs: OK');
