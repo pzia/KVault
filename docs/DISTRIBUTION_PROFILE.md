@@ -1,7 +1,7 @@
 # Kobo Vault — Profil de distribution et de mise à jour
 
 Version du profil : 1.0  
-Application : Kobo Library Vault 0.9.7  
+Application : Kobo Library Vault 0.9.8  
 Référence : `DISTRIBUTION_BLUEPRINT_REFERENCE.md`
 
 ## 1. Portée
@@ -29,6 +29,7 @@ Le projet conserve comme points d'entrée opérateur :
 ./scripts/setup-cloudflare.sh
 ./scripts/deploy.sh
 ./scripts/update-from-zip.sh
+bash scripts/update_from_git
 ./scripts/configure-acquisition-secret.sh
 ```
 
@@ -49,7 +50,27 @@ wrangler.jsonc
 
 Le stockage D1 distant n'appartient pas à l'archive de release. Ses évolutions passent uniquement par les migrations versionnées.
 
-## 4. Pipeline de mise à jour
+## 4. Mise à jour directe depuis GitHub
+
+La commande stable :
+
+```bash
+bash scripts/update_from_git
+```
+
+résout par défaut `pzia/KVault:main` via l'API GitHub en un SHA de commit de 40 caractères, puis télécharge l'archive de **ce SHA exact**. La validation et la bascule ne sont pas réimplémentées : le script transmet l'archive à `update-from-zip.sh --install --deploy`.
+
+Cela garantit que la révision testée est celle déployée et conserve les mêmes propriétés de staging, sauvegarde et rollback. Options utiles :
+
+```bash
+bash scripts/update_from_git --dry-run
+bash scripts/update_from_git --no-deploy
+bash scripts/update_from_git --ref <tag-branche-ou-sha>
+```
+
+`GITHUB_TOKEN` est facultatif. Il sert uniquement à l'appel GitHub et n'est jamais copié dans la release candidate.
+
+## 5. Pipeline de mise à jour ZIP
 
 La commande :
 
@@ -83,7 +104,7 @@ déploiement Cloudflare depuis la candidate validée
 
 La release locale n'est donc plus remplacée avant les tests de la candidate.
 
-## 5. Dry-run
+## 6. Dry-run
 
 ```bash
 ./scripts/update-from-zip.sh nouvelle-version.zip --dry-run
@@ -102,7 +123,7 @@ Le dry-run vérifie notamment :
 
 Il ne modifie ni le projet, ni npm, ni Cloudflare.
 
-## 6. Sauvegarde et rollback
+## 7. Sauvegarde et rollback
 
 Avant la bascule locale, l'updater crée une sauvegarde **de la distribution seulement** :
 
@@ -127,7 +148,7 @@ Rollback :
 
 Le script sélectionne la dernière sauvegarde transactionnelle, la valide comme une release candidate, puis applique le même pipeline. Pour la première migration depuis une version ≤ 0.8.0, il sait également relire la sauvegarde historique créée par l’ancien updater.
 
-## 7. Failure model
+## 8. Failure model
 
 Échec avant bascule locale :
 
@@ -145,7 +166,7 @@ Avec `--deploy`, le Worker est déployé depuis le staging **après tests et apr
 
 Une migration D1 doit toujours être conçue comme compatible avec la version immédiatement précédente : une migration de base distante n'est pas annulée par le rollback du code local.
 
-## 8. Différence avec le pattern Python commun
+## 9. Différence avec le pattern Python commun
 
 Kobo Vault ne met pas en place :
 
@@ -167,12 +188,12 @@ publication versionnée Cloudflare
 sauvegarde transactionnelle du source local
 ```
 
-## 9. Contrat d'interface
+## 10. Contrat d'interface
 
 Le profil de distribution reste indépendant du contrat métier. La V0.9.2 conserve ce mécanisme de distribution et fait évoluer séparément l'API fournisseur publique vers :
 
 ```text
-Kobo Vault Provider API v2.3 (révision contractuelle 2.3.2)
+Kobo Vault Provider API v2.3 (révision contractuelle 2.3.4)
 ```
 
-La révision courante v2.3.2 est documentée dans `interfaces/MIGRATION_V2.3.1_TO_V2.3.2.md`. Le correctif transport v2.3.1 reste documenté séparément ; ces évolutions de contrat ne sont pas une conséquence du mécanisme de distribution.
+La révision courante v2.3.4 est documentée dans `interfaces/MIGRATION_V2.3.3_TO_V2.3.4.md`. Le correctif transport v2.3.1 reste documenté séparément ; ces évolutions de contrat ne sont pas une conséquence du mécanisme de distribution.
