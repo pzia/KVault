@@ -1,5 +1,17 @@
 # Kobo Vault Provider API — Changelog de contrat
 
+## 2.3.4 — explicit refresh contracts
+
+- `api_version` reste `2.3` et le schéma acquisition reste `1.4` ;
+- `GET /catalog/search` accepte `refresh=true` pour contourner et remplacer la valeur du cache Provider correspondant exactement à la requête ; la réponse publie `cache_status=hit|miss|revalidated` et `origin_fetched_at` ;
+- ajoute `POST /library/refresh`, protégé par le nouveau scope opt-in `kobo.library.refresh` ;
+- le refresh bibliothèque explicite conserve singleflight/verrou 5 min, délai minimal 5 min entre succès explicites et backoff 15 min après échec, avec états `refreshed|fresh|refreshing|backoff|stale|failed` ;
+- les lectures `/library/manifest`, `/library/search` et `/library/{product_id}` deviennent passives et ne déclenchent plus de synchronisation Kobo implicite ;
+- un token existant n'est jamais élevé automatiquement avec `kobo.library.refresh` ;
+- `/status` authentifié annonce `library_refresh` uniquement lorsque le bearer courant possède ce scope ; `acquisition_delegation` reste de la même façon liée à `kobo.acquisition.delegate` ;
+- republier les credentials Provider remet la fraîcheur bibliothèque à invalide pour permettre une revalidation sous le nouveau contexte ;
+- aucune migration D1.
+
 ## 2.3.3 — library_sync device delivery
 
 - acquisition schema 1.4 ;
