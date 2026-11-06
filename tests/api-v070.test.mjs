@@ -8,7 +8,7 @@ const html = fs.readFileSync(new URL('../public/index.html', import.meta.url), '
 const migration = fs.readFileSync(new URL('../migrations/0003_provider_api_v2.sql', import.meta.url), 'utf8');
 const openapi = fs.readFileSync(new URL('../interfaces/kobo-vault-openapi-v2.yaml', import.meta.url), 'utf8');
 
-assert.match(worker, /const APP_RELEASE = "0\.9\.7"/);
+assert.match(worker, /const APP_RELEASE = "0\.9\.8"/);
 assert.match(app, /const APP_VERSION = '0\.9\.7'/);
 assert.match(migration, /CREATE TABLE IF NOT EXISTS kobo_api_credentials/);
 assert.match(migration, /ciphertext TEXT NOT NULL/);
