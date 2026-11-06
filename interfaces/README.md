@@ -1,4 +1,4 @@
-# Interfaces publiques Kobo Vault 0.9.4 / API v2.3.2
+# Interfaces publiques Kobo Vault 0.9.8 / API v2.3.4
 
 Ce répertoire est le contrat publié par **Kobo Vault** en tant que fournisseur spécialisé Kobo.
 
@@ -6,18 +6,20 @@ Principe : **Paris Library décide ; Kobo Vault expose Kobo ; Kobo-Adept exécut
 
 ## Fichiers
 
-- `kobo-vault-openapi-v2.3.2.yaml` — contrat HTTPS courant ;
+- `kobo-vault-openapi-v2.3.4.yaml` — contrat HTTPS courant ;
+- `kobo-vault-openapi-v2.3.3.yaml` — contrat précédent conservé pour référence ;
 - `kobo-vault-openapi-v2.3.1.yaml` — contrat précédent conservé pour référence ;
 - `kobo-vault-openapi-v2.3.yaml` — contrat précédent conservé pour référence ;
 - `kobo-vault-openapi-v2.yaml` — alias du contrat courant ;
 - `kobo-vault-openapi-v2.2.yaml` — contrat précédent conservé pour référence ;
 - `kobo-vault-status.schema.json` — découverte/capabilities ;
 - `kobo-vault-library-item.schema.json` — notice Kobo normalisée ;
-- `kobo-vault-acquisition.schema.json` — descripteur d'acquisition v1.3 ;
+- `kobo-vault-acquisition.schema.json` — descripteur d'acquisition v1.4 ;
 - `kobo-vault-acquisition-v1.2.schema.json` — schéma historique v2.2 ;
 - `DRM_ACQUISITION_SEMANTICS.md` — sémantique formats/DRM ;
 - `DOWNLOAD_TRANSPORT_SEMANTICS.md` — headers, redirections et Authorization ;
 - `ACSM_EXPORT_SEMANTICS.md` — résolution de l'export ACSM ;
+- `MIGRATION_V2.3.3_TO_V2.3.4.md` — revalidation explicite catalogue/bibliothèque ;
 - `MIGRATION_V2.3.1_TO_V2.3.2.md` — clarification versionnement et sécurité des scopes ;
 - `MIGRATION_V2.3_TO_V2.3.1.md` — mise à jour transport consommateur ;
 - `MIGRATION_V2.2_TO_V2.3.md` — migration précédente ;
@@ -29,8 +31,20 @@ Principe : **Paris Library décide ; Kobo Vault expose Kobo ; Kobo-Adept exécut
 
 - `kobo.catalog.read`
 - `kobo.library.read`
+- `kobo.library.refresh`
 - `kobo.acquisition.read`
 - `kobo.acquisition.delegate`
+
+## Revalidation explicite v2.3.4
+
+La révision 2.3.4 conserve `api_version=2.3` et l'acquisition `1.4`, mais sépare la lecture de la revalidation :
+
+```text
+GET  /api/v2/catalog/search?...&refresh=true
+POST /api/v2/library/refresh
+```
+
+Le refresh de bibliothèque exige `kobo.library.refresh`, scope opt-in absent des anciens tokens. Les lectures de bibliothèque restent passives. Un `GET /api/v2/status` authentifié annonce les capacités effectives du bearer courant, notamment `library_refresh` et `acquisition_delegation`.
 
 ## Stabilisation v2.3.2
 
