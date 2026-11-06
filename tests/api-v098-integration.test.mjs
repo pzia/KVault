@@ -118,6 +118,29 @@ try {
   r=await call('/api/v2/catalog/search?q=catalogue&refresh=1',{headers:refreshHeaders});
   assert.equal(r.res.status,400);
   assert.equal(r.data.error.code,'invalid_request');
+
+  // A Kobo 403 is an authorization/policy refusal, not an expired access
+  // token signal. It must never consume the refresh token or replay auth.
+  r=await call(`/api/v2/vault/${uid}/acquisition-access`,{method:'PUT',headers:vaultHeaders,body:{
+    accessToken:'ACCESS_098',refreshToken:'REFRESH_098',appVersion:'4.44.23552',
+    userId:'user-098',deviceId:'device-098',serialNumber:'serial-098'
+  }});
+  assert.equal(r.res.status,200);
+  await d1.prepare('UPDATE library_sync_state SET last_success_at=NULL,last_attempt_at=NULL,last_error=NULL,refresh_started_at=NULL WHERE uid_hash=?').bind(uid).run();
+  let refreshTokenCalls=0;
+  globalThis.fetch=async(input)=>{
+    const u=input instanceof URL?input:new URL(typeof input==='string'?input:input.url);
+    if(u.pathname==='/v1/initialization') return new Response('forbidden',{status:403});
+    if(u.pathname==='/v1/auth/refresh') {
+      refreshTokenCalls++;
+      return new Response('must not be called',{status:500});
+    }
+    throw new Error(`unexpected fetch ${u}`);
+  };
+  r=await call('/api/v2/library/refresh',{method:'POST',headers:refreshHeaders});
+  assert.equal(r.res.status,200);
+  assert.equal(r.data.refresh.status,'failed');
+  assert.equal(refreshTokenCalls,0);
 } finally {
   globalThis.fetch=originalFetch;
   if(originalCaches===undefined) delete globalThis.caches; else globalThis.caches=originalCaches;
