@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kobo-vault.local/schemas/status-v2.3.2.json",
+  "$id": "https://kobo-vault.local/schemas/status-v2.3.4.json",
   "title": "Kobo Vault API Status",
   "type": "object",
   "required": [
@@ -98,7 +98,7 @@
       ]
     },
     "contract_revision": {
-      "const": "2.3.3"
+      "const": "2.3.4"
     },
     "acquisition_schema_version": {
       "const": "1.4"
