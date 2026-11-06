@@ -17,7 +17,7 @@
     }
   ],
   "vars": {
-    "APP_VERSION": "0.9.7",
+    "APP_VERSION": "0.9.8",
     "KOBO_APP_VERSION": "4.44.23552",
     "CATALOG_CACHE_TTL_SECONDS": "86400",
     "RATING_CACHE_TTL_SECONDS": "604800",
