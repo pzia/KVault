@@ -113,6 +113,7 @@ baseline_check() {
   node --check "$dir/public/storage.js"
   node --check "$dir/public/model.js"
   bash -n "$dir"/scripts/*.sh
+  [[ ! -f "$dir/scripts/update_from_git" ]] || bash -n "$dir/scripts/update_from_git"
 }
 
 full_check() {
