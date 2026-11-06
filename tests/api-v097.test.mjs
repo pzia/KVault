@@ -7,7 +7,7 @@ const html = fs.readFileSync(new URL('../public/index.html', import.meta.url), '
 const app = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
 const worker = fs.readFileSync(new URL('../src/worker.js', import.meta.url), 'utf8');
 
-assert.equal(pkg.version, '0.9.7');
+assert.equal(pkg.version, '0.9.8');
 
 // Real library_sync shape: FLEPUB/KDRM is a full EPUB-family artifact, not unknown.
 // Duplicate entitlement recipes with different temporary tokens collapse semantically.
