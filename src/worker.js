@@ -1909,14 +1909,6 @@ async function v2Acquisition(request, env, client, productId) {
   return json({
     provider:"kobo",
     schema_version:"1.4",
-    // Descriptor-local producer declaration: this observation comes from
-    // the SAME private POST, never a separately cached /status response.
-    // The probe tests the executing normalizer, not only the release label.
-    producer_contract:{
-      release:APP_RELEASE,
-      contract_revision:"2.3.4",
-      flepub_media_probe:normalizeKoboMediaFormat("FLEPUB").media_format
-    },
     item,
     acquisition
   }, 200, { "Cache-Control":"private, no-store", "Pragma":"no-cache" });
