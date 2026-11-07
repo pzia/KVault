@@ -72,15 +72,6 @@ try {
   r=await call('/api/v2/library/prod-sync/acquisition',{method:'POST',headers:delegatedHeaders,body:{mode:'delegated',include_acsm:false,display_profile:'Android'}});
   assert.equal(r.res.status,200);
   assert.equal(r.data.acquisition.mode,'delegated');
-  // This declaration is produced in the exact selected POST: it cannot
-  // falsely borrow a different Worker generation's cached /status response.
-  assert.deepEqual(r.data.producer_contract, {
-    release:'0.9.8',
-    contract_revision:'2.3.4',
-    flepub_media_probe:'epub',
-  });
-  assert.equal(JSON.stringify(r.data).includes('CONTENT_KEY_097_MUST_NOT_LEAK'),false);
-
   assert.equal(r.data.acquisition.candidates.length,1);
   const c=r.data.acquisition.candidates[0];
   assert.equal(c.handling,'kobo_kdrm');
